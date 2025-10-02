@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance Monitoring System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .tab-active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="app" class="container mx-auto p-4 md:p-8 max-w-6xl">
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Sistem Kehadiran Pelajar 2025/2026</h1>
+            <p class="text-center text-gray-500 mt-2">Pemantauan Kehadiran Pelajar Sesi 2025/2026</p>
+        </header>
+
+        <!-- Tabs -->
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="flex space-x-4" aria-label="Tabs">
+                <button id="tab-entry" class="px-3 py-2 font-medium text-sm rounded-t-md tab-active">Catat Kehadiran</button>
+                <button id="tab-dashboard" class="px-3 py-2 font-medium text-sm rounded-t-md text-gray-500 hover:text-gray-700">Papar Kehadiran</button>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Attendance Entry Section -->
+            <div id="content-entry">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-700">Daftar Kehadiran</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                        <div>
+                            <label for="entry-date" class="block text-sm font-medium text-gray-600 mb-1">Tarikh</label>
+                            <input type="date" id="entry-date" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="entry-time" class="block text-sm font-medium text-gray-600 mb-1">Masa</label>
+                            <input type="time" id="entry-time" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="entry-class" class="block text-sm font-medium text-gray-600 mb-1">Nama Kelas</label>
+                            <select id="entry-class" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="entry-class-type" class="block text-sm font-medium text-gray-600 mb-1">Mod Kelas</label>
+                            <select id="entry-class-type" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4 border-t pt-4">Senarai Pelajar</h3>
+                    <div id="student-list" class="space-y-4">
+                        <!-- Student rows will be populated by JS -->
+                    </div>
+
+                    <div class="mt-8 flex justify-end">
+                        <button id="submit-attendance" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
+                            Catat Kehadiran
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Section -->
+            <div id="content-dashboard" class="hidden">
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-700">Data Kehadiran</h2>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                         <div>
+                             <label for="dashboard-class" class="block text-sm font-medium text-gray-600 mb-1">Pilih Kelas</label>
+                             <select id="dashboard-class" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                 <!-- Options will be populated by JS -->
+                             </select>
+                         </div>
+                         <div>
+                            <label for="dashboard-class-type" class="block text-sm font-medium text-gray-600 mb-1">Pilih Mod Kelas</label>
+                            <select id="dashboard-class-type" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                     </div>
+
+                     <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pelajar</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% Kehadiran</th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ketidakhadiran</th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Dashboard rows will be populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                 </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Remarks Modal -->
+    <div id="remarks-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-11/12 md:max-w-lg mx-auto p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800" id="modal-student-name"></h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <div id="modal-remarks-content" class="text-sm text-gray-600 space-y-2 max-h-60 overflow-y-auto">
+                <!-- Remarks will be populated here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Custom Alert -->
+    <div id="custom-alert" class="fixed top-5 right-5 z-50 bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hidden transition-transform translate-x-full">
+        <p id="alert-message"></p>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = {
+                // --- CONFIGURATION ---
+                // ** TAMPAL (PASTE) PAUTAN GOOGLE SHEET ANDA DI SINI **
+                googleSheetUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlfpghvp8zv38Kj6EpVEeQzALCIh71ZrmH2WwxlhcOEo1C16I_xXP1Fvqruu6p_qPvlPw37TWYlbzy/pub?output=csv',
+
+                // --- DATA ---
+                classTypes: ['Practical', 'Tutorial'],
+                classRosters: {}, 
+                attendanceData: {}, 
+
+                // --- INITIALIZATION ---
+                async init() {
+                    this.cacheDOM();
+                    await this.loadRostersFromGoogleSheet();
+                    this.loadData();
+                    this.bindEvents();
+                    this.render();
+                    this.setInitialDateTime();
+                },
+                
+                async loadRostersFromGoogleSheet() {
+                    if (!this.googleSheetUrl || this.googleSheetUrl === 'PASTE_YOUR_GOOGLE_SHEET_CSV_URL_HERE') {
+                        this.showAlert('Pautan Google Sheet tidak ditetapkan. Menggunakan data contoh.', 'error');
+                        this.classRosters = {
+                            'Contoh Kelas A': ['Pelajar Contoh 1', 'Pelajar Contoh 2'],
+                            'Contoh Kelas B': ['Pelajar Contoh 3', 'Pelajar Contoh 4']
+                        };
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(this.googleSheetUrl);
+                        if (!response.ok) {
+                            throw new Error(`Ralat rangkaian: ${response.statusText}`);
+                        }
+                        const csvText = await response.text();
+                        const rosters = {};
+                        const rows = csvText.split('\n').filter(row => row.trim() !== '').slice(1); 
+
+                        rows.forEach(row => {
+                            const parts = row.split(',');
+                            const className = parts[0]?.trim();
+                            const studentName = parts.slice(1).join(',')?.trim().replace(/"/g, '');
+
+                            if (className && studentName) {
+                                if (!rosters[className]) {
+                                    rosters[className] = [];
+                                }
+                                rosters[className].push(studentName);
+                            }
+                        });
+
+                        this.classRosters = rosters;
+                        if (Object.keys(this.classRosters).length === 0) {
+                            this.showAlert('Gagal memuatkan senarai pelajar. Semak format/pautan Google Sheet.', 'error');
+                        } else {
+                            this.showAlert('Senarai pelajar berjaya dimuatkan dari Google Sheet!', 'success');
+                        }
+                    } catch (error) {
+                        console.error('Ralat memuatkan senarai nama:', error);
+                        this.showAlert('Gagal memuatkan senarai dari Google Sheet. Menggunakan data contoh.', 'error');
+                        this.classRosters = {
+                            'Contoh Kelas A': ['Pelajar Contoh 1', 'Pelajar Contoh 2'],
+                            'Contoh Kelas B': ['Pelajar Contoh 3', 'Pelajar Contoh 4']
+                        };
+                    }
+                },
+
+
+                cacheDOM() {
+                    this.tabs = { entry: document.getElementById('tab-entry'), dashboard: document.getElementById('tab-dashboard') };
+                    this.content = { entry: document.getElementById('content-entry'), dashboard: document.getElementById('content-dashboard') };
+                    this.entryForm = { date: document.getElementById('entry-date'), time: document.getElementById('entry-time'), class: document.getElementById('entry-class'), classType: document.getElementById('entry-class-type'), studentList: document.getElementById('student-list'), submitBtn: document.getElementById('submit-attendance') };
+                    this.dashboardView = { classSelect: document.getElementById('dashboard-class'), classTypeSelect: document.getElementById('dashboard-class-type'), body: document.getElementById('dashboard-body') };
+                    this.modal = { container: document.getElementById('remarks-modal'), studentName: document.getElementById('modal-student-name'), content: document.getElementById('modal-remarks-content'), closeBtn: document.getElementById('close-modal') };
+                    this.alert = { container: document.getElementById('custom-alert'), message: document.getElementById('alert-message') };
+                },
+                
+                bindEvents() {
+                    this.tabs.entry.addEventListener('click', () => this.switchTab('entry'));
+                    this.tabs.dashboard.addEventListener('click', () => this.switchTab('dashboard'));
+                    this.entryForm.submitBtn.addEventListener('click', this.submitAttendance.bind(this));
+                    this.entryForm.class.addEventListener('change', this.renderStudentEntryList.bind(this));
+                    this.dashboardView.classSelect.addEventListener('change', this.renderDashboard.bind(this));
+                    this.dashboardView.classTypeSelect.addEventListener('change', this.renderDashboard.bind(this));
+                    this.modal.closeBtn.addEventListener('click', this.closeModal.bind(this));
+                    this.modal.container.addEventListener('click', (e) => { if (e.target === this.modal.container) this.closeModal(); });
+                },
+
+                // --- DATA PERSISTENCE (localStorage) ---
+                saveData() {
+                    localStorage.setItem('attendanceData', JSON.stringify(this.attendanceData));
+                },
+
+                loadData() {
+                    const data = localStorage.getItem('attendanceData');
+                    this.attendanceData = data ? JSON.parse(data) : {};
+                },
+
+                // --- RENDER FUNCTIONS ---
+                render() {
+                    this.populateClassSelects();
+                    this.populateClassTypeSelects();
+                    this.renderStudentEntryList();
+                    this.renderDashboard();
+                },
+
+                populateClassSelects() {
+                    const classNames = Object.keys(this.classRosters);
+                    if (classNames.length === 0) {
+                        const defaultOption = '<option>Tiada kelas dimuatkan</option>';
+                        this.entryForm.class.innerHTML = defaultOption;
+                        this.dashboardView.classSelect.innerHTML = defaultOption;
+                        return;
+                    }
+                    const classOptions = classNames.map(c => `<option value="${c}">${c}</option>`).join('');
+                    this.entryForm.class.innerHTML = classOptions;
+                    this.dashboardView.classSelect.innerHTML = classOptions;
+                },
+                
+                populateClassTypeSelects() {
+                    const classTypeOptions = this.classTypes.map(c => `<option value="${c}">${c}</option>`).join('');
+                    this.entryForm.classType.innerHTML = classTypeOptions;
+                    this.dashboardView.classTypeSelect.innerHTML = classTypeOptions;
+                },
+
+                renderStudentEntryList() {
+                    const selectedClass = this.entryForm.class.value;
+                    const students = this.classRosters[selectedClass] || [];
+                    
+                    if(students.length === 0) {
+                        this.entryForm.studentList.innerHTML = `<p class="text-center text-gray-500">Tiada pelajar dijumpai untuk kelas ini.</p>`;
+                        return;
+                    }
+
+                    this.entryForm.studentList.innerHTML = students.map((student, index) => `
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border-t pt-4">
+                            <div class="md:col-span-1 font-medium text-gray-700">${student}</div>
+                            <div class="md:col-span-2">
+                                <div class="flex flex-wrap items-center gap-4">
+                                    <div class="flex items-center">
+                                        <input id="present-${index}" name="status-${student.replace(/\s+/g, '-')}" type="radio" value="present" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" checked>
+                                        <label for="present-${index}" class="ml-2 block text-sm text-gray-900">Hadir</label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input id="absent-${index}" name="status-${student.replace(/\s+/g, '-')}" type="radio" value="absent" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                        <label for="absent-${index}" class="ml-2 block text-sm text-gray-900">Tidak Hadir</label>
+                                    </div>
+                                     <div class="flex-grow">
+                                        <input type="text" placeholder="Sebab (jika tidak hadir)" data-student="${student}" class="remarks-input w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    this.entryForm.studentList.querySelectorAll('input[type="radio"]').forEach(radio => {
+                        radio.addEventListener('change', (e) => {
+                            const remarksInput = e.target.closest('.flex-wrap').querySelector('.remarks-input');
+                            remarksInput.disabled = e.target.value !== 'absent';
+                            if (e.target.value !== 'absent') remarksInput.value = '';
+                        });
+                    });
+                },
+
+                renderDashboard() {
+                    const selectedClass = this.dashboardView.classSelect.value;
+                    const selectedClassType = this.dashboardView.classTypeSelect.value;
+                    const students = this.classRosters[selectedClass] || [];
+                    const classData = this.attendanceData[selectedClass]?.[selectedClassType] || [];
+                    
+                    if (students.length === 0) {
+                        this.dashboardView.body.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Tiada pelajar untuk kelas ini.</td></tr>`;
+                        return;
+                    }
+                    if (classData.length === 0) {
+                        this.dashboardView.body.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Tiada data kehadiran direkodkan lagi.</td></tr>`;
+                        return;
+                    }
+
+                    const summary = students.map(student => {
+                        let presentCount = 0, absentCount = 0;
+                        const remarks = [];
+                        classData.forEach(record => {
+                            const studentRecord = record.records[student];
+                            if (studentRecord) {
+                                if (studentRecord.status === 'present') presentCount++;
+                                if (studentRecord.status === 'absent') {
+                                    absentCount++;
+                                    if (studentRecord.remarks) remarks.push({ date: record.date, remark: studentRecord.remarks });
+                                }
+                            }
+                        });
+                        const totalRecords = presentCount + absentCount;
+                        const percentage = totalRecords > 0 ? ((presentCount / totalRecords) * 100).toFixed(1) : 0;
+                        return { name: student, percentage, absentCount, remarks };
+                    });
+
+                    this.dashboardView.body.innerHTML = summary.map(s => {
+                        const percentageColor = s.percentage >= 80 ? 'bg-green-500' : s.percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+                        return `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.name}</div></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="w-full bg-gray-200 rounded-full h-2.5"><div class="${percentageColor} h-2.5 rounded-full" style="width: ${s.percentage}%"></div></div>
+                                        <span class="ml-3 text-sm font-medium text-gray-600">${s.percentage}%</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${s.absentCount > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${s.absentCount}</span></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-center"><button ${s.absentCount === 0 ? 'disabled' : ''} data-student-name="${s.name}" class="view-remarks-btn text-blue-600 hover:text-blue-900 disabled:text-gray-400 disabled:cursor-not-allowed">Papar Sebab</button></td>
+                            </tr>
+                        `;
+                    }).join('');
+                    
+                    this.dashboardView.body.querySelectorAll('.view-remarks-btn').forEach(btn => {
+                        btn.addEventListener('click', e => {
+                            const studentName = e.target.getAttribute('data-student-name');
+                            const studentSummary = summary.find(s => s.name === studentName);
+                            if (studentSummary) this.showRemarksModal(studentSummary);
+                        });
+                    });
+                },
+
+                // --- CORE LOGIC ---
+                switchTab(tabName) {
+                    if (tabName === 'entry') {
+                        this.tabs.entry.classList.add('tab-active'); this.tabs.dashboard.classList.remove('tab-active');
+                        this.content.entry.classList.remove('hidden'); this.content.dashboard.classList.add('hidden');
+                    } else {
+                        this.tabs.dashboard.classList.add('tab-active'); this.tabs.entry.classList.remove('tab-active');
+                        this.content.dashboard.classList.remove('hidden'); this.content.entry.classList.add('hidden');
+                        this.renderDashboard();
+                    }
+                },
+                
+                setInitialDateTime() {
+                    const now = new Date();
+                    this.entryForm.date.value = now.toISOString().split('T')[0];
+                    this.entryForm.time.value = now.toTimeString().split(' ')[0].substring(0, 5);
+                },
+
+                submitAttendance() {
+                    const className = this.entryForm.class.value;
+                    const classType = this.entryForm.classType.value;
+                    const date = this.entryForm.date.value;
+                    const time = this.entryForm.time.value;
+                    const students = this.classRosters[className] || [];
+
+                    if (!date || !time) { this.showAlert('Sila pilih tarikh dan masa.', 'error'); return; }
+                    if (students.length === 0) { this.showAlert('Tiada pelajar dalam kelas ini.', 'error'); return; }
+
+                    if (!this.attendanceData[className]) this.attendanceData[className] = {};
+                    if (!this.attendanceData[className][classType]) this.attendanceData[className][classType] = [];
+
+                    const existingRecord = this.attendanceData[className][classType].find(r => r.date === date);
+                    if (existingRecord) {
+                        this.showAlert(`Kehadiran untuk ${className} (${classType}) pada ${date} telah direkodkan.`, 'error');
+                        return;
+                    }
+
+                    const newRecord = { date, time, records: {} };
+                    const studentRows = this.entryForm.studentList.querySelectorAll('.grid');
+                    studentRows.forEach((row, index) => {
+                        const studentName = students[index];
+                        const status = row.querySelector(`input[name="status-${studentName.replace(/\s+/g, '-')}"]:checked`).value;
+                        const remarks = row.querySelector('.remarks-input').value.trim();
+                        newRecord.records[studentName] = { status, remarks: status === 'absent' ? remarks : '' };
+                    });
+
+                    this.attendanceData[className][classType].push(newRecord);
+                    this.saveData();
+                    this.showAlert('Kehadiran berjaya direkodkan!', 'success');
+                    this.renderStudentEntryList(); 
+                },
+
+                showRemarksModal(studentSummary) {
+                    this.modal.studentName.textContent = `Sebab Tidak Hadir untuk ${studentSummary.name}`;
+                    if(studentSummary.remarks.length > 0) {
+                       this.modal.content.innerHTML = studentSummary.remarks.map(r => `
+                            <div class="border-l-4 border-blue-500 pl-3 py-1 my-1">
+                                <p class="font-semibold">${new Date(r.date + 'T00:00:00').toDateString()}</p>
+                                <p>${r.remark || 'Tiada sebab diberikan.'}</p>
+                            </div>
+                        `).join('');
+                    } else {
+                        this.modal.content.innerHTML = '<p>Tiada sebab direkodkan.</p>';
+                    }
+                    this.modal.container.classList.remove('hidden');
+                },
+
+                closeModal() {
+                    this.modal.container.classList.add('hidden');
+                },
+                
+                showAlert(message, type = 'success') {
+                    this.alert.message.textContent = message;
+                    this.alert.container.classList.remove('bg-green-500', 'bg-red-500');
+                    if (type === 'error') this.alert.container.classList.add('bg-red-500');
+                    else this.alert.container.classList.add('bg-green-500');
+                    this.alert.container.classList.remove('hidden', 'translate-x-full');
+                    this.alert.container.classList.add('translate-x-0');
+                    setTimeout(() => {
+                        this.alert.container.classList.remove('translate-x-0');
+                        this.alert.container.classList.add('translate-x-full');
+                        setTimeout(() => this.alert.container.classList.add('hidden'), 300);
+                    }, 3000);
+                }
+            };
+
+            app.init();
+        });
+    </script>
+</body>
+</html>
+
