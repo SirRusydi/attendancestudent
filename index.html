@@ -33,6 +33,7 @@
             <nav class="flex space-x-4" aria-label="Tabs">
                 <button id="tab-entry" class="px-3 py-2 font-medium text-sm rounded-t-md tab-active">Catat Kehadiran</button>
                 <button id="tab-dashboard" class="px-3 py-2 font-medium text-sm rounded-t-md text-gray-500 hover:text-gray-700">Papar Kehadiran</button>
+                <button id="tab-summary" class="px-3 py-2 font-medium text-sm rounded-t-md text-gray-500 hover:text-gray-700">Ringkasan Kelas</button>
             </nav>
         </div>
 
@@ -81,7 +82,7 @@
             <!-- Dashboard Section -->
             <div id="content-dashboard" class="hidden">
                  <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-700">Data Kehadiran</h2>
+                    <h2 class="text-2xl font-bold mb-6 text-gray-700">Data Kehadiran Pelajar</h2>
                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                          <div>
                              <label for="dashboard-class" class="block text-sm font-medium text-gray-600 mb-1">Pilih Kelas</label>
@@ -114,6 +115,29 @@
                     </div>
                  </div>
             </div>
+
+            <!-- Summary Section -->
+            <div id="content-summary" class="hidden">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-700">Ringkasan Kehadiran Keseluruhan</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kelas</th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Kelas Dijalankan</th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Kehadiran Keseluruhan (%)</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kehadiran Tertinggi</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kehadiran Terendah</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summary-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Summary rows will be populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -126,6 +150,19 @@
             </div>
             <div id="modal-remarks-content" class="text-sm text-gray-600 space-y-2 max-h-60 overflow-y-auto">
                 <!-- Remarks will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions Modal -->
+    <div id="sessions-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-11/12 md:max-w-lg mx-auto p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800" id="sessions-modal-title"></h3>
+                <button id="close-sessions-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <div id="sessions-modal-content" class="text-sm text-gray-600 space-y-2 max-h-60 overflow-y-auto">
+                <!-- Session list will be populated here -->
             </div>
         </div>
     </div>
@@ -144,7 +181,7 @@
                 googleSheetUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlfpghvp8zv38Kj6EpVEeQzALCIh71ZrmH2WwxlhcOEo1C16I_xXP1Fvqruu6p_qPvlPw37TWYlbzy/pub?output=csv',
 
                 // --- DATA ---
-                classTypes: ['Practical', 'Tutorial'],
+                classTypes: ['Praktikum', 'Tutorial'],
                 classRosters: {}, 
                 attendanceData: {}, 
 
@@ -208,23 +245,36 @@
 
 
                 cacheDOM() {
-                    this.tabs = { entry: document.getElementById('tab-entry'), dashboard: document.getElementById('tab-dashboard') };
-                    this.content = { entry: document.getElementById('content-entry'), dashboard: document.getElementById('content-dashboard') };
+                    this.tabs = { 
+                        entry: document.getElementById('tab-entry'), 
+                        dashboard: document.getElementById('tab-dashboard'),
+                        summary: document.getElementById('tab-summary')
+                    };
+                    this.content = { 
+                        entry: document.getElementById('content-entry'), 
+                        dashboard: document.getElementById('content-dashboard'),
+                        summary: document.getElementById('content-summary')
+                    };
                     this.entryForm = { date: document.getElementById('entry-date'), time: document.getElementById('entry-time'), class: document.getElementById('entry-class'), classType: document.getElementById('entry-class-type'), studentList: document.getElementById('student-list'), submitBtn: document.getElementById('submit-attendance') };
                     this.dashboardView = { classSelect: document.getElementById('dashboard-class'), classTypeSelect: document.getElementById('dashboard-class-type'), body: document.getElementById('dashboard-body') };
+                    this.summaryView = { body: document.getElementById('summary-body') };
                     this.modal = { container: document.getElementById('remarks-modal'), studentName: document.getElementById('modal-student-name'), content: document.getElementById('modal-remarks-content'), closeBtn: document.getElementById('close-modal') };
+                    this.sessionsModal = { container: document.getElementById('sessions-modal'), title: document.getElementById('sessions-modal-title'), content: document.getElementById('sessions-modal-content'), closeBtn: document.getElementById('close-sessions-modal') };
                     this.alert = { container: document.getElementById('custom-alert'), message: document.getElementById('alert-message') };
                 },
                 
                 bindEvents() {
                     this.tabs.entry.addEventListener('click', () => this.switchTab('entry'));
                     this.tabs.dashboard.addEventListener('click', () => this.switchTab('dashboard'));
+                    this.tabs.summary.addEventListener('click', () => this.switchTab('summary'));
                     this.entryForm.submitBtn.addEventListener('click', this.submitAttendance.bind(this));
                     this.entryForm.class.addEventListener('change', this.renderStudentEntryList.bind(this));
                     this.dashboardView.classSelect.addEventListener('change', this.renderDashboard.bind(this));
                     this.dashboardView.classTypeSelect.addEventListener('change', this.renderDashboard.bind(this));
                     this.modal.closeBtn.addEventListener('click', this.closeModal.bind(this));
                     this.modal.container.addEventListener('click', (e) => { if (e.target === this.modal.container) this.closeModal(); });
+                    this.sessionsModal.closeBtn.addEventListener('click', this.closeSessionsModal.bind(this));
+                    this.sessionsModal.container.addEventListener('click', (e) => { if (e.target === this.sessionsModal.container) this.closeSessionsModal(); });
                 },
 
                 // --- DATA PERSISTENCE (localStorage) ---
@@ -243,6 +293,7 @@
                     this.populateClassTypeSelects();
                     this.renderStudentEntryList();
                     this.renderDashboard();
+                    this.renderSummary();
                 },
 
                 populateClassSelects() {
@@ -362,16 +413,97 @@
                     });
                 },
 
+                renderSummary() {
+                    const classNames = Object.keys(this.classRosters);
+                    if (classNames.length === 0) {
+                        this.summaryView.body.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Tiada data kelas untuk dipaparkan.</td></tr>`;
+                        return;
+                    }
+
+                    const summaryHtml = classNames.map(className => {
+                        const students = this.classRosters[className] || [];
+                        if (students.length === 0) return '';
+
+                        let totalSessions = 0;
+                        let totalPresentOverall = 0;
+                        const studentStats = {};
+                        students.forEach(s => { studentStats[s] = { present: 0, total: 0 }; });
+
+                        this.classTypes.forEach(classType => {
+                            const records = this.attendanceData[className]?.[classType] || [];
+                            totalSessions += records.length;
+                            records.forEach(record => {
+                                students.forEach(student => {
+                                    const studentRecord = record.records[student];
+                                    if (studentRecord) {
+                                        studentStats[student].total++;
+                                        if (studentRecord.status === 'present') {
+                                            studentStats[student].present++;
+                                            totalPresentOverall++;
+                                        }
+                                    }
+                                });
+                            });
+                        });
+                        
+                        const totalPossibleAttendances = totalSessions * students.length;
+                        const overallPercentage = totalPossibleAttendances > 0 ? ((totalPresentOverall / totalPossibleAttendances) * 100).toFixed(1) : 0;
+                        
+                        let highest = { name: '-', percentage: -1 };
+                        let lowest = { name: '-', percentage: 101 };
+
+                        students.forEach(student => {
+                            const stats = studentStats[student];
+                            const percentage = stats.total > 0 ? (stats.present / stats.total) * 100 : 0;
+                            if (percentage > highest.percentage) {
+                                highest = { name: student, percentage: percentage.toFixed(1) };
+                            }
+                            if (percentage < lowest.percentage) {
+                                lowest = { name: student, percentage: percentage.toFixed(1) };
+                            }
+                        });
+
+                        if (highest.name === '-') highest.percentage = 0;
+                        if (lowest.name === '-') lowest.percentage = 0;
+
+                        return `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${className}</div></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                                    <button data-class-name="${className}" class="view-sessions-btn text-blue-600 hover:text-blue-900 underline disabled:text-gray-400 disabled:cursor-not-allowed disabled:no-underline" ${totalSessions === 0 ? 'disabled' : ''}>
+                                        ${totalSessions}
+                                    </button>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-700">${overallPercentage}%</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${highest.name} <span class="text-green-600 font-semibold">(${highest.percentage}%)</span></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${lowest.name} <span class="text-red-600 font-semibold">(${lowest.percentage}%)</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    this.summaryView.body.innerHTML = summaryHtml || `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Tiada data kehadiran direkodkan lagi.</td></tr>`;
+                    
+                    this.summaryView.body.querySelectorAll('.view-sessions-btn').forEach(btn => {
+                        btn.addEventListener('click', e => {
+                            const className = e.target.getAttribute('data-class-name');
+                            this.showSessionsModal(className);
+                        });
+                    });
+                },
+
                 // --- CORE LOGIC ---
                 switchTab(tabName) {
-                    if (tabName === 'entry') {
-                        this.tabs.entry.classList.add('tab-active'); this.tabs.dashboard.classList.remove('tab-active');
-                        this.content.entry.classList.remove('hidden'); this.content.dashboard.classList.add('hidden');
-                    } else {
-                        this.tabs.dashboard.classList.add('tab-active'); this.tabs.entry.classList.remove('tab-active');
-                        this.content.dashboard.classList.remove('hidden'); this.content.entry.classList.add('hidden');
-                        this.renderDashboard();
-                    }
+                    // Hide all content and remove active class from all tabs
+                    Object.values(this.content).forEach(c => c.classList.add('hidden'));
+                    Object.values(this.tabs).forEach(t => t.classList.remove('tab-active'));
+
+                    // Show selected content and set active class on selected tab
+                    this.content[tabName].classList.remove('hidden');
+                    this.tabs[tabName].classList.add('tab-active');
+                    
+                    // Re-render specific views when switching to them
+                    if (tabName === 'dashboard') this.renderDashboard();
+                    if (tabName === 'summary') this.renderSummary();
                 },
                 
                 setInitialDateTime() {
@@ -431,6 +563,39 @@
 
                 closeModal() {
                     this.modal.container.classList.add('hidden');
+                },
+
+                showSessionsModal(className) {
+                    this.sessionsModal.title.textContent = `Senarai Sesi untuk Kelas ${className}`;
+                    
+                    const sessions = [];
+                    this.classTypes.forEach(classType => {
+                        const records = this.attendanceData[className]?.[classType] || [];
+                        records.forEach(record => {
+                            sessions.push({ date: record.date, time: record.time, type: classType });
+                        });
+                    });
+                    
+                    sessions.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+
+                    if (sessions.length > 0) {
+                        this.sessionsModal.content.innerHTML = `
+                            <ul class="list-disc pl-5 space-y-2">
+                                ${sessions.map(s => `
+                                    <li>
+                                        <span class="font-semibold">${new Date(s.date + 'T00:00:00').toDateString()}</span>
+                                        - ${s.time} (${s.type})
+                                    </li>
+                                `).join('')}
+                            </ul>`;
+                    } else {
+                        this.sessionsModal.content.innerHTML = '<p>Tiada sesi direkodkan untuk kelas ini.</p>';
+                    }
+                    this.sessionsModal.container.classList.remove('hidden');
+                },
+
+                closeSessionsModal() {
+                    this.sessionsModal.container.classList.add('hidden');
                 },
                 
                 showAlert(message, type = 'success') {
