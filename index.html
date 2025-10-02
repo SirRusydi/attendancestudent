@@ -166,6 +166,18 @@
             </div>
         </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-11/12 md:max-w-md mx-auto p-6">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Sahkan Padam</h3>
+            <p id="delete-confirm-message" class="text-gray-600 mb-6">Adakah anda pasti mahu memadam rekod kehadiran ini? Tindakan ini tidak boleh diubah.</p>
+            <div class="flex justify-end space-x-4">
+                <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-md hover:bg-gray-300">Batal</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700">Padam</button>
+            </div>
+        </div>
+    </div>
     
     <!-- Custom Alert -->
     <div id="custom-alert" class="fixed top-5 right-5 z-50 bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hidden transition-transform translate-x-full">
@@ -181,7 +193,7 @@
                 googleSheetUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlfpghvp8zv38Kj6EpVEeQzALCIh71ZrmH2WwxlhcOEo1C16I_xXP1Fvqruu6p_qPvlPw37TWYlbzy/pub?output=csv',
 
                 // --- DATA ---
-                classTypes: ['Praktikum', 'Tutorial'],
+                classTypes: ['Practical', 'Tutorial'],
                 classRosters: {}, 
                 attendanceData: {}, 
 
@@ -260,6 +272,7 @@
                     this.summaryView = { body: document.getElementById('summary-body') };
                     this.modal = { container: document.getElementById('remarks-modal'), studentName: document.getElementById('modal-student-name'), content: document.getElementById('modal-remarks-content'), closeBtn: document.getElementById('close-modal') };
                     this.sessionsModal = { container: document.getElementById('sessions-modal'), title: document.getElementById('sessions-modal-title'), content: document.getElementById('sessions-modal-content'), closeBtn: document.getElementById('close-sessions-modal') };
+                    this.deleteConfirmModal = { container: document.getElementById('delete-confirm-modal'), message: document.getElementById('delete-confirm-message'), confirmBtn: document.getElementById('confirm-delete-btn'), cancelBtn: document.getElementById('cancel-delete-btn') };
                     this.alert = { container: document.getElementById('custom-alert'), message: document.getElementById('alert-message') };
                 },
                 
@@ -275,6 +288,8 @@
                     this.modal.container.addEventListener('click', (e) => { if (e.target === this.modal.container) this.closeModal(); });
                     this.sessionsModal.closeBtn.addEventListener('click', this.closeSessionsModal.bind(this));
                     this.sessionsModal.container.addEventListener('click', (e) => { if (e.target === this.sessionsModal.container) this.closeSessionsModal(); });
+                    this.deleteConfirmModal.cancelBtn.addEventListener('click', this.closeDeleteConfirmModal.bind(this));
+                    this.deleteConfirmModal.confirmBtn.addEventListener('click', this.executeDeleteSession.bind(this));
                 },
 
                 // --- DATA PERSISTENCE (localStorage) ---
@@ -583,19 +598,61 @@
                             <ul class="list-disc pl-5 space-y-2">
                                 ${sessions.map(s => `
                                     <li>
-                                        <span class="font-semibold">${new Date(s.date + 'T00:00:00').toDateString()}</span>
-                                        - ${s.time} (${s.type})
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <span class="font-semibold">${new Date(s.date + 'T00:00:00').toDateString()}</span>
+                                                - ${s.time} (${s.type})
+                                            </div>
+                                            <button data-class-name="${className}" data-date="${s.date}" data-type="${s.type}" class="delete-session-btn text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                                            </button>
+                                        </div>
                                     </li>
                                 `).join('')}
                             </ul>`;
                     } else {
                         this.sessionsModal.content.innerHTML = '<p>Tiada sesi direkodkan untuk kelas ini.</p>';
                     }
+
+                    this.sessionsModal.content.querySelectorAll('.delete-session-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => this.promptDeleteSession(e.currentTarget.dataset));
+                    });
+
                     this.sessionsModal.container.classList.remove('hidden');
                 },
 
                 closeSessionsModal() {
                     this.sessionsModal.container.classList.add('hidden');
+                },
+
+                promptDeleteSession({ className, date, type }) {
+                    this.deleteConfirmModal.message.textContent = `Adakah anda pasti mahu memadam rekod kehadiran untuk kelas ${className} (${type}) pada ${date}? Tindakan ini tidak boleh diubah.`;
+                    this.deleteConfirmModal.confirmBtn.dataset.className = className;
+                    this.deleteConfirmModal.confirmBtn.dataset.date = date;
+                    this.deleteConfirmModal.confirmBtn.dataset.type = type;
+                    this.deleteConfirmModal.container.classList.remove('hidden');
+                },
+
+                closeDeleteConfirmModal() {
+                    this.deleteConfirmModal.container.classList.add('hidden');
+                },
+
+                executeDeleteSession(e) {
+                    const { className, date, type } = e.currentTarget.dataset;
+                    const records = this.attendanceData[className]?.[type];
+
+                    if (records) {
+                        const recordIndex = records.findIndex(r => r.date === date);
+                        if (recordIndex > -1) {
+                            records.splice(recordIndex, 1);
+                            this.saveData();
+                            this.showAlert('Rekod kehadiran berjaya dipadam.', 'success');
+                        }
+                    }
+
+                    this.closeDeleteConfirmModal();
+                    this.closeSessionsModal();
+                    this.render(); // Re-render the whole UI
                 },
                 
                 showAlert(message, type = 'success') {
