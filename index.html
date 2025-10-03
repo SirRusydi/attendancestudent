@@ -65,8 +65,20 @@
                             </select>
                         </div>
                     </div>
+
+                    <!-- Holiday/Remark Section -->
+                    <div class="mt-6 border-t pt-4">
+                        <div class="flex items-center">
+                            <input id="session-remark-toggle" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="session-remark-toggle" class="ml-2 block text-sm font-medium text-gray-700">Tandakan sesi ini sebagai Cuti Umum atau Acara Khas (tiada kehadiran diambil)</label>
+                        </div>
+                        <div id="session-remark-container" class="hidden mt-4">
+                            <label for="session-remark-input" class="block text-sm font-medium text-gray-600 mb-1">Sebab / Catatan</label>
+                            <input type="text" id="session-remark-input" placeholder="Cth: Cuti Hari Kemerdekaan, Kelas Batal" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
                     
-                    <h3 class="text-lg font-semibold text-gray-700 mb-4 border-t pt-4">Senarai Pelajar</h3>
+                    <h3 id="student-list-header" class="text-lg font-semibold text-gray-700 my-4 border-t pt-4">Senarai Pelajar</h3>
                     <div id="student-list" class="space-y-4">
                         <!-- Student rows will be populated by JS -->
                     </div>
@@ -83,7 +95,7 @@
             <div id="content-dashboard" class="hidden">
                  <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-2xl font-bold mb-6 text-gray-700">Data Kehadiran Pelajar</h2>
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                          <div>
                              <label for="dashboard-class" class="block text-sm font-medium text-gray-600 mb-1">Pilih Kelas</label>
                              <select id="dashboard-class" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
@@ -93,6 +105,12 @@
                          <div>
                             <label for="dashboard-class-type" class="block text-sm font-medium text-gray-600 mb-1">Pilih Mod Kelas</label>
                             <select id="dashboard-class-type" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="dashboard-month" class="block text-sm font-medium text-gray-600 mb-1">Pilih Bulan</label>
+                            <select id="dashboard-month" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                 <!-- Options will be populated by JS -->
                             </select>
                         </div>
@@ -120,6 +138,12 @@
             <div id="content-summary" class="hidden">
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-2xl font-bold mb-6 text-gray-700">Ringkasan Kehadiran Keseluruhan</h2>
+                    <div class="mb-6">
+                        <label for="summary-month" class="block text-sm font-medium text-gray-600 mb-1">Tapis Mengikut Bulan</label>
+                        <select id="summary-month" class="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
@@ -267,9 +291,20 @@
                         dashboard: document.getElementById('content-dashboard'),
                         summary: document.getElementById('content-summary')
                     };
-                    this.entryForm = { date: document.getElementById('entry-date'), time: document.getElementById('entry-time'), class: document.getElementById('entry-class'), classType: document.getElementById('entry-class-type'), studentList: document.getElementById('student-list'), submitBtn: document.getElementById('submit-attendance') };
-                    this.dashboardView = { classSelect: document.getElementById('dashboard-class'), classTypeSelect: document.getElementById('dashboard-class-type'), body: document.getElementById('dashboard-body') };
-                    this.summaryView = { body: document.getElementById('summary-body') };
+                    this.entryForm = { 
+                        date: document.getElementById('entry-date'), 
+                        time: document.getElementById('entry-time'), 
+                        class: document.getElementById('entry-class'), 
+                        classType: document.getElementById('entry-class-type'), 
+                        studentList: document.getElementById('student-list'), 
+                        submitBtn: document.getElementById('submit-attendance'),
+                        studentListHeader: document.getElementById('student-list-header'),
+                        sessionRemarkToggle: document.getElementById('session-remark-toggle'),
+                        sessionRemarkContainer: document.getElementById('session-remark-container'),
+                        sessionRemarkInput: document.getElementById('session-remark-input')
+                    };
+                    this.dashboardView = { classSelect: document.getElementById('dashboard-class'), classTypeSelect: document.getElementById('dashboard-class-type'), monthSelect: document.getElementById('dashboard-month'), body: document.getElementById('dashboard-body') };
+                    this.summaryView = { monthSelect: document.getElementById('summary-month'), body: document.getElementById('summary-body') };
                     this.modal = { container: document.getElementById('remarks-modal'), studentName: document.getElementById('modal-student-name'), content: document.getElementById('modal-remarks-content'), closeBtn: document.getElementById('close-modal') };
                     this.sessionsModal = { container: document.getElementById('sessions-modal'), title: document.getElementById('sessions-modal-title'), content: document.getElementById('sessions-modal-content'), closeBtn: document.getElementById('close-sessions-modal') };
                     this.deleteConfirmModal = { container: document.getElementById('delete-confirm-modal'), message: document.getElementById('delete-confirm-message'), confirmBtn: document.getElementById('confirm-delete-btn'), cancelBtn: document.getElementById('cancel-delete-btn') };
@@ -282,8 +317,11 @@
                     this.tabs.summary.addEventListener('click', () => this.switchTab('summary'));
                     this.entryForm.submitBtn.addEventListener('click', this.submitAttendance.bind(this));
                     this.entryForm.class.addEventListener('change', this.renderStudentEntryList.bind(this));
+                    this.entryForm.sessionRemarkToggle.addEventListener('change', this.toggleSessionRemark.bind(this));
                     this.dashboardView.classSelect.addEventListener('change', this.renderDashboard.bind(this));
                     this.dashboardView.classTypeSelect.addEventListener('change', this.renderDashboard.bind(this));
+                    this.dashboardView.monthSelect.addEventListener('change', this.renderDashboard.bind(this));
+                    this.summaryView.monthSelect.addEventListener('change', this.renderSummary.bind(this));
                     this.modal.closeBtn.addEventListener('click', this.closeModal.bind(this));
                     this.modal.container.addEventListener('click', (e) => { if (e.target === this.modal.container) this.closeModal(); });
                     this.sessionsModal.closeBtn.addEventListener('click', this.closeSessionsModal.bind(this));
@@ -306,6 +344,7 @@
                 render() {
                     this.populateClassSelects();
                     this.populateClassTypeSelects();
+                    this.populateMonthFilters();
                     this.renderStudentEntryList();
                     this.renderDashboard();
                     this.renderSummary();
@@ -328,6 +367,29 @@
                     const classTypeOptions = this.classTypes.map(c => `<option value="${c}">${c}</option>`).join('');
                     this.entryForm.classType.innerHTML = classTypeOptions;
                     this.dashboardView.classTypeSelect.innerHTML = classTypeOptions;
+                },
+
+                populateMonthFilters() {
+                    const allDates = new Set();
+                    Object.values(this.attendanceData).forEach(classData => {
+                        Object.values(classData).forEach(typeData => {
+                            typeData.forEach(record => {
+                                allDates.add(record.date.substring(0, 7)); // YYYY-MM
+                            });
+                        });
+                    });
+
+                    const sortedMonths = Array.from(allDates).sort().reverse();
+
+                    const monthOptions = sortedMonths.map(month => {
+                        const date = new Date(month + '-02'); // Day 2 to avoid timezone issues
+                        const monthName = date.toLocaleString('ms-MY', { month: 'long', year: 'numeric' });
+                        return `<option value="${month}">${monthName}</option>`;
+                    }).join('');
+
+                    const finalOptions = `<option value="all">Semua Bulan</option>` + monthOptions;
+                    this.dashboardView.monthSelect.innerHTML = finalOptions;
+                    this.summaryView.monthSelect.innerHTML = finalOptions;
                 },
 
                 renderStudentEntryList() {
@@ -372,22 +434,29 @@
                 renderDashboard() {
                     const selectedClass = this.dashboardView.classSelect.value;
                     const selectedClassType = this.dashboardView.classTypeSelect.value;
+                    const selectedMonth = this.dashboardView.monthSelect.value;
                     const students = this.classRosters[selectedClass] || [];
-                    const classData = this.attendanceData[selectedClass]?.[selectedClassType] || [];
+                    let classData = this.attendanceData[selectedClass]?.[selectedClassType] || [];
                     
+                    if (selectedMonth && selectedMonth !== 'all') {
+                        classData = classData.filter(record => record.date.startsWith(selectedMonth));
+                    }
+
+                    const attendanceTakingSessions = classData.filter(record => record.type !== 'session_remark');
+
                     if (students.length === 0) {
                         this.dashboardView.body.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Tiada pelajar untuk kelas ini.</td></tr>`;
                         return;
                     }
-                    if (classData.length === 0) {
-                        this.dashboardView.body.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Tiada data kehadiran direkodkan lagi.</td></tr>`;
+                    if (attendanceTakingSessions.length === 0) {
+                        this.dashboardView.body.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Tiada data kehadiran (kelas berlangsung) direkodkan bagi penapis yang dipilih.</td></tr>`;
                         return;
                     }
 
                     const summary = students.map(student => {
                         let presentCount = 0, absentCount = 0;
                         const remarks = [];
-                        classData.forEach(record => {
+                        attendanceTakingSessions.forEach(record => {
                             const studentRecord = record.records[student];
                             if (studentRecord) {
                                 if (studentRecord.status === 'present') presentCount++;
@@ -429,6 +498,7 @@
                 },
 
                 renderSummary() {
+                    const selectedMonth = this.summaryView.monthSelect.value;
                     const classNames = Object.keys(this.classRosters);
                     if (classNames.length === 0) {
                         this.summaryView.body.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Tiada data kelas untuk dipaparkan.</td></tr>`;
@@ -441,13 +511,20 @@
 
                         let totalSessions = 0;
                         let totalPresentOverall = 0;
+                        let totalPossibleAttendancesFiltered = 0;
                         const studentStats = {};
                         students.forEach(s => { studentStats[s] = { present: 0, total: 0 }; });
 
                         this.classTypes.forEach(classType => {
-                            const records = this.attendanceData[className]?.[classType] || [];
-                            totalSessions += records.length;
-                            records.forEach(record => {
+                            let records = this.attendanceData[className]?.[classType] || [];
+                            if (selectedMonth && selectedMonth !== 'all') {
+                                records = records.filter(record => record.date.startsWith(selectedMonth));
+                            }
+                            
+                            const attendanceTakingRecords = records.filter(r => r.type !== 'session_remark');
+                            totalSessions += attendanceTakingRecords.length;
+                            
+                            attendanceTakingRecords.forEach(record => {
                                 students.forEach(student => {
                                     const studentRecord = record.records[student];
                                     if (studentRecord) {
@@ -461,8 +538,11 @@
                             });
                         });
                         
-                        const totalPossibleAttendances = totalSessions * students.length;
-                        const overallPercentage = totalPossibleAttendances > 0 ? ((totalPresentOverall / totalPossibleAttendances) * 100).toFixed(1) : 0;
+                        students.forEach(student => {
+                           totalPossibleAttendancesFiltered += studentStats[student].total;
+                        });
+
+                        const overallPercentage = totalPossibleAttendancesFiltered > 0 ? ((totalPresentOverall / totalPossibleAttendancesFiltered) * 100).toFixed(1) : 0;
                         
                         let highest = { name: '-', percentage: -1 };
                         let lowest = { name: '-', percentage: 101 };
@@ -470,16 +550,22 @@
                         students.forEach(student => {
                             const stats = studentStats[student];
                             const percentage = stats.total > 0 ? (stats.present / stats.total) * 100 : 0;
-                            if (percentage > highest.percentage) {
-                                highest = { name: student, percentage: percentage.toFixed(1) };
-                            }
-                            if (percentage < lowest.percentage) {
-                                lowest = { name: student, percentage: percentage.toFixed(1) };
+                            if (stats.total > 0) {
+                                if (percentage > highest.percentage) {
+                                    highest = { name: student, percentage: percentage.toFixed(1) };
+                                }
+                                if (percentage < lowest.percentage) {
+                                    lowest = { name: student, percentage: percentage.toFixed(1) };
+                                }
                             }
                         });
 
                         if (highest.name === '-') highest.percentage = 0;
                         if (lowest.name === '-') lowest.percentage = 0;
+                        if (totalSessions === 0) {
+                            lowest.name = '-';
+                            lowest.percentage = 0;
+                        }
 
                         return `
                             <tr>
@@ -508,19 +594,24 @@
 
                 // --- CORE LOGIC ---
                 switchTab(tabName) {
-                    // Hide all content and remove active class from all tabs
                     Object.values(this.content).forEach(c => c.classList.add('hidden'));
                     Object.values(this.tabs).forEach(t => t.classList.remove('tab-active'));
 
-                    // Show selected content and set active class on selected tab
                     this.content[tabName].classList.remove('hidden');
                     this.tabs[tabName].classList.add('tab-active');
                     
-                    // Re-render specific views when switching to them
                     if (tabName === 'dashboard') this.renderDashboard();
                     if (tabName === 'summary') this.renderSummary();
                 },
                 
+                toggleSessionRemark() {
+                    const isChecked = this.entryForm.sessionRemarkToggle.checked;
+                    this.entryForm.sessionRemarkContainer.classList.toggle('hidden', !isChecked);
+                    this.entryForm.studentListHeader.classList.toggle('hidden', isChecked);
+                    this.entryForm.studentList.classList.toggle('hidden', isChecked);
+                    this.entryForm.submitBtn.textContent = isChecked ? 'Simpan Catatan Sesi' : 'Catat Kehadiran';
+                },
+
                 setInitialDateTime() {
                     const now = new Date();
                     this.entryForm.date.value = now.toISOString().split('T')[0];
@@ -532,33 +623,48 @@
                     const classType = this.entryForm.classType.value;
                     const date = this.entryForm.date.value;
                     const time = this.entryForm.time.value;
-                    const students = this.classRosters[className] || [];
-
+                    
                     if (!date || !time) { this.showAlert('Sila pilih tarikh dan masa.', 'error'); return; }
-                    if (students.length === 0) { this.showAlert('Tiada pelajar dalam kelas ini.', 'error'); return; }
 
                     if (!this.attendanceData[className]) this.attendanceData[className] = {};
                     if (!this.attendanceData[className][classType]) this.attendanceData[className][classType] = [];
 
                     const existingRecord = this.attendanceData[className][classType].find(r => r.date === date);
                     if (existingRecord) {
-                        this.showAlert(`Kehadiran untuk ${className} (${classType}) pada ${date} telah direkodkan.`, 'error');
+                        this.showAlert(`Rekod untuk ${className} (${classType}) pada ${date} telah wujud.`, 'error');
                         return;
                     }
 
-                    const newRecord = { date, time, records: {} };
-                    const studentRows = this.entryForm.studentList.querySelectorAll('.grid');
-                    studentRows.forEach((row, index) => {
-                        const studentName = students[index];
-                        const status = row.querySelector(`input[name="status-${studentName.replace(/\s+/g, '-')}"]:checked`).value;
-                        const remarks = row.querySelector('.remarks-input').value.trim();
-                        newRecord.records[studentName] = { status, remarks: status === 'absent' ? remarks : '' };
-                    });
+                    if (this.entryForm.sessionRemarkToggle.checked) {
+                        const remark = this.entryForm.sessionRemarkInput.value.trim();
+                        if (!remark) { this.showAlert('Sila masukkan sebab atau catatan.', 'error'); return; }
+                        
+                        const newRecord = { date, time, type: 'session_remark', remark };
+                        this.attendanceData[className][classType].push(newRecord);
+                        this.saveData();
+                        this.showAlert('Catatan sesi berjaya disimpan!', 'success');
+                        
+                        this.entryForm.sessionRemarkToggle.checked = false;
+                        this.toggleSessionRemark();
+                        this.entryForm.sessionRemarkInput.value = '';
+                    } else {
+                        const students = this.classRosters[className] || [];
+                        if (students.length === 0) { this.showAlert('Tiada pelajar dalam kelas ini.', 'error'); return; }
 
-                    this.attendanceData[className][classType].push(newRecord);
-                    this.saveData();
-                    this.showAlert('Kehadiran berjaya direkodkan!', 'success');
-                    this.renderStudentEntryList(); 
+                        const newRecord = { date, time, records: {} };
+                        const studentRows = this.entryForm.studentList.querySelectorAll('.grid');
+                        studentRows.forEach((row, index) => {
+                            const studentName = students[index];
+                            const status = row.querySelector(`input[name="status-${studentName.replace(/\s+/g, '-')}"]:checked`).value;
+                            const remarks = row.querySelector('.remarks-input').value.trim();
+                            newRecord.records[studentName] = { status, remarks: status === 'absent' ? remarks : '' };
+                        });
+
+                        this.attendanceData[className][classType].push(newRecord);
+                        this.saveData();
+                        this.showAlert('Kehadiran berjaya direkodkan!', 'success');
+                    }
+                    this.render();
                 },
 
                 showRemarksModal(studentSummary) {
@@ -581,13 +687,21 @@
                 },
 
                 showSessionsModal(className) {
+                    const selectedMonth = this.summaryView.monthSelect.value;
                     this.sessionsModal.title.textContent = `Senarai Sesi untuk Kelas ${className}`;
                     
                     const sessions = [];
                     this.classTypes.forEach(classType => {
-                        const records = this.attendanceData[className]?.[classType] || [];
+                        let records = this.attendanceData[className]?.[classType] || [];
+                        if (selectedMonth && selectedMonth !== 'all') {
+                            records = records.filter(record => record.date.startsWith(selectedMonth));
+                        }
                         records.forEach(record => {
-                            sessions.push({ date: record.date, time: record.time, type: classType });
+                             if (record.type === 'session_remark') {
+                                sessions.push({ date: record.date, time: record.time, type: classType, isRemark: true, remark: record.remark });
+                            } else {
+                                sessions.push({ date: record.date, time: record.time, type: classType, isRemark: false });
+                            }
                         });
                     });
                     
@@ -596,19 +710,23 @@
                     if (sessions.length > 0) {
                         this.sessionsModal.content.innerHTML = `
                             <ul class="list-disc pl-5 space-y-2">
-                                ${sessions.map(s => `
+                                ${sessions.map(s => {
+                                    const displayInfo = s.isRemark
+                                        ? `<span class="font-semibold text-indigo-600">${s.remark}</span>`
+                                        : `${s.time} (${s.type})`;
+                                    return `
                                     <li>
                                         <div class="flex justify-between items-center">
                                             <div>
                                                 <span class="font-semibold">${new Date(s.date + 'T00:00:00').toDateString()}</span>
-                                                - ${s.time} (${s.type})
+                                                - ${displayInfo}
                                             </div>
                                             <button data-class-name="${className}" data-date="${s.date}" data-type="${s.type}" class="delete-session-btn text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
                                             </button>
                                         </div>
                                     </li>
-                                `).join('')}
+                                `}).join('')}
                             </ul>`;
                     } else {
                         this.sessionsModal.content.innerHTML = '<p>Tiada sesi direkodkan untuk kelas ini.</p>';
@@ -626,7 +744,7 @@
                 },
 
                 promptDeleteSession({ className, date, type }) {
-                    this.deleteConfirmModal.message.textContent = `Adakah anda pasti mahu memadam rekod kehadiran untuk kelas ${className} (${type}) pada ${date}? Tindakan ini tidak boleh diubah.`;
+                    this.deleteConfirmModal.message.textContent = `Adakah anda pasti mahu memadam rekod untuk kelas ${className} (${type}) pada ${date}? Tindakan ini tidak boleh diubah.`;
                     this.deleteConfirmModal.confirmBtn.dataset.className = className;
                     this.deleteConfirmModal.confirmBtn.dataset.date = date;
                     this.deleteConfirmModal.confirmBtn.dataset.type = type;
@@ -646,7 +764,7 @@
                         if (recordIndex > -1) {
                             records.splice(recordIndex, 1);
                             this.saveData();
-                            this.showAlert('Rekod kehadiran berjaya dipadam.', 'success');
+                            this.showAlert('Rekod berjaya dipadam.', 'success');
                         }
                     }
 
