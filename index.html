@@ -6,6 +6,8 @@
     <title>Student Attendance Monitoring System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -46,8 +48,21 @@
 
     <div id="app" class="container mx-auto p-4 md:p-8 max-w-6xl">
         <header class="mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Sistem Kehadiran Pelajar 2025/2026</h1>
-            <p class="text-center text-gray-500 mt-2">Pemantauan Kehadiran Pelajar Sesi 2025/2026</p>
+            <div class="flex justify-between items-center">
+                <div></div> <!-- Spacer -->
+                <div class="text-center">
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Sistem Kehadiran Pelajar 2025/2026</h1>
+                    <p class="text-gray-500 mt-2">Pemantauan Kehadiran Pelajar Sesi 2025/2026</p>
+                </div>
+                <div id="online-status" class="text-right">
+                    <!-- Status indicator will be added here -->
+                </div>
+            </div>
+             <div class="text-center mt-4">
+                <button id="migrate-data-btn" class="hidden px-4 py-2 bg-amber-500 text-white font-semibold rounded-md shadow-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400 transition duration-150">
+                    Pindah Data Lama ke Online
+                </button>
+            </div>
         </header>
 
         <!-- Tabs -->
@@ -242,8 +257,13 @@
             const app = {
                 // --- CONFIGURATION ---
                 googleSheetUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlfpghvp8zv38Kj6EpVEeQzALCIh71ZrmH2WwxlhcOEo1C16I_xXP1Fvqruu6p_qPvlPw37TWYlbzy/pub?output=csv',
+                
+                // ** TAMPAL (PASTE) SUPABASE URL & ANON KEY ANDA DI SINI **
+                supabaseUrl: 'https://bihbjelmkclckgfmsgqu.supabase.co', 
+                supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpaGJqZWxta2NsY2tnZm1zZ3F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0NzU0MzIsImV4cCI6MjA3NTA1MTQzMn0.Mjszb-CHWKFr_IIauiFsa3aE8S70lVXMgKo2oYaIBPA',
 
-                // --- DATA ---
+                // --- STATE ---
+                supabase: null,
                 classTypes: ['Practical', 'Tutorial'],
                 classRosters: {}, 
                 attendanceData: {}, 
@@ -251,11 +271,27 @@
                 // --- INITIALIZATION ---
                 async init() {
                     this.cacheDOM();
+                    this.initializeSupabase();
                     await this.loadRostersFromGoogleSheet();
-                    this.loadData();
+                    await this.loadData();
                     this.bindEvents();
                     this.render();
                     this.setInitialDateTime();
+                    this.checkLocalStorageData();
+                },
+
+                initializeSupabase() {
+                    if (this.supabaseUrl && this.supabaseUrl !== 'PASTE_YOUR_SUPABASE_URL_HERE' && this.supabaseAnonKey && this.supabaseAnonKey !== 'PASTE_YOUR_SUPABASE_ANON_KEY_HERE') {
+                        try {
+                            this.supabase = supabase.createClient(this.supabaseUrl, this.supabaseAnonKey);
+                            this.updateOnlineStatus(true, 'Disambungkan ke Supabase');
+                        } catch (error) {
+                            console.error('Supabase initialization failed:', error);
+                             this.updateOnlineStatus(false, 'Gagal sambung ke Supabase');
+                        }
+                    } else {
+                         this.updateOnlineStatus(false, 'Supabase tidak dikonfigurasi');
+                    }
                 },
                 
                 async loadRostersFromGoogleSheet() {
@@ -287,11 +323,11 @@
                         if (Object.keys(this.classRosters).length === 0) {
                             this.showAlert('Gagal memuatkan senarai pelajar. Semak format/pautan Google Sheet.', 'error');
                         } else {
-                            this.showAlert('Senarai pelajar berjaya dimuatkan dari Google Sheet!', 'success');
+                            this.showAlert('Senarai pelajar berjaya dimuatkan!', 'success');
                         }
                     } catch (error) {
                         console.error('Ralat memuatkan senarai nama:', error);
-                        this.showAlert('Gagal memuatkan senarai dari Google Sheet. Menggunakan data contoh.', 'error');
+                        this.showAlert('Gagal memuatkan senarai dari Google Sheet.', 'error');
                         this.classRosters = {
                            'Contoh Kelas A': [{ name: 'Pelajar Contoh 1', status: 'Active' }, { name: 'Pelajar Contoh 2', status: 'Active' }],
                            'Contoh Kelas B': [{ name: 'Pelajar Contoh 3', status: 'Active' }, { name: 'Pelajar Contoh 4', status: 'Inactive' }]
@@ -300,6 +336,8 @@
                 },
 
                 cacheDOM() {
+                    this.onlineStatus = document.getElementById('online-status');
+                    this.migrateDataBtn = document.getElementById('migrate-data-btn');
                     this.tabs = { entry: document.getElementById('tab-entry'), dashboard: document.getElementById('tab-dashboard'), summary: document.getElementById('tab-summary') };
                     this.content = { entry: document.getElementById('content-entry'), dashboard: document.getElementById('content-dashboard'), summary: document.getElementById('content-summary') };
                     this.entryForm = { date: document.getElementById('entry-date'), time: document.getElementById('entry-time'), class: document.getElementById('entry-class'), classType: document.getElementById('entry-class-type'), studentList: document.getElementById('student-list'), submitBtn: document.getElementById('submit-attendance'), studentListHeader: document.getElementById('student-list-header'), sessionRemarkToggle: document.getElementById('session-remark-toggle'), sessionRemarkContainer: document.getElementById('session-remark-container'), sessionRemarkInput: document.getElementById('session-remark-input') };
@@ -313,6 +351,7 @@
                 },
                 
                 bindEvents() {
+                    this.migrateDataBtn.addEventListener('click', this.migrateData.bind(this));
                     this.tabs.entry.addEventListener('click', () => this.switchTab('entry'));
                     this.tabs.dashboard.addEventListener('click', () => this.switchTab('dashboard'));
                     this.tabs.summary.addEventListener('click', () => this.switchTab('summary'));
@@ -332,9 +371,40 @@
                     this.deleteConfirmModal.confirmBtn.addEventListener('click', this.executeDeleteSession.bind(this));
                 },
 
-                saveData() { localStorage.setItem('attendanceData', JSON.stringify(this.attendanceData)); },
-                loadData() { this.attendanceData = JSON.parse(localStorage.getItem('attendanceData')) || {}; },
+                // --- DATA MANAGEMENT (Supabase) ---
+                async loadData() {
+                    if (!this.supabase) {
+                        this.showAlert('Sistem berjalan dalam mod luar talian (offline).', 'error');
+                        return;
+                    }
+                    const { data, error } = await this.supabase.from('attendance_records').select('*');
+                    if (error) {
+                        console.error('Error fetching data:', error);
+                        this.showAlert('Gagal memuatkan data dari pangkalan data.', 'error');
+                        return;
+                    }
+                    
+                    // Reconstruct the nested object structure from the flat array
+                    const reconstructedData = {};
+                    data.forEach(record => {
+                        const { class_name, class_type, date, time, record_type, details } = record;
+                        if (!reconstructedData[class_name]) reconstructedData[class_name] = {};
+                        if (!reconstructedData[class_name][class_type]) reconstructedData[class_name][class_type] = [];
+                        
+                        const newRecord = { date, time };
+                        if (record_type === 'session_remark') {
+                            newRecord.type = 'session_remark';
+                            newRecord.remark = details.remark;
+                        } else {
+                            newRecord.records = details;
+                        }
+                        reconstructedData[class_name][class_type].push(newRecord);
+                    });
+                    this.attendanceData = reconstructedData;
+                    this.render();
+                },
 
+                // --- UI & RENDER ---
                 render() {
                     this.populateClassSelects();
                     this.populateClassTypeSelects();
@@ -343,7 +413,6 @@
                     this.renderDashboard();
                     this.renderSummary();
                 },
-
                 populateClassSelects() {
                     const classNames = Object.keys(this.classRosters);
                     const defaultOption = '<option>Tiada kelas dimuatkan</option>';
@@ -356,13 +425,11 @@
                     this.entryForm.class.innerHTML = classOptions;
                     this.dashboardView.classSelect.innerHTML = classOptions;
                 },
-                
                 populateClassTypeSelects() {
                     const classTypeOptions = this.classTypes.map(c => `<option value="${c}">${c}</option>`).join('');
                     this.entryForm.classType.innerHTML = classTypeOptions;
                     this.dashboardView.classTypeSelect.innerHTML = classTypeOptions;
                 },
-
                 populateMonthFilters() {
                     const allDates = new Set();
                     Object.values(this.attendanceData).forEach(classData => Object.values(classData).forEach(typeData => typeData.forEach(record => allDates.add(record.date.substring(0, 7)))));
@@ -376,7 +443,6 @@
                     this.dashboardView.monthSelect.innerHTML = finalOptions;
                     this.summaryView.monthSelect.innerHTML = finalOptions;
                 },
-
                 renderStudentEntryList() {
                     const selectedClass = this.entryForm.class.value;
                     const activeStudents = (this.classRosters[selectedClass] || []).filter(s => s.status === 'Active');
@@ -399,7 +465,6 @@
                         if (e.target.value !== 'absent') remarksInput.value = '';
                     }));
                 },
-
                 renderDashboard() {
                     const selectedClass = this.dashboardView.classSelect.value;
                     const selectedClassType = this.dashboardView.classTypeSelect.value;
@@ -453,7 +518,6 @@
                         if (studentSummary) this.showRemarksModal(studentSummary);
                     }));
                 },
-
                 renderSummary() {
                     const selectedMonth = this.summaryView.monthSelect.value;
                     const classNames = Object.keys(this.classRosters);
@@ -513,6 +577,11 @@
                     this.summaryView.body.innerHTML = summaryHtml || `<tr><td colspan="5" class="px-6 py-4 text-center">Tiada data kehadiran direkodkan lagi.</td></tr>`;
                     this.summaryView.body.querySelectorAll('.view-sessions-btn').forEach(btn => btn.addEventListener('click', e => this.showSessionsModal(e.target.getAttribute('data-class-name'))));
                 },
+                updateOnlineStatus(isOnline, message) {
+                    const statusColor = isOnline ? 'bg-green-500' : 'bg-red-500';
+                    const statusDot = `<span class="h-3 w-3 rounded-full ${statusColor} inline-block mr-2"></span>`;
+                    this.onlineStatus.innerHTML = `<div class="flex items-center text-sm">${statusDot} ${message}</div>`;
+                },
 
                 // --- CORE LOGIC ---
                 switchTab(tabName) {
@@ -538,46 +607,116 @@
                     this.entryForm.time.value = now.toTimeString().split(' ')[0].substring(0, 5);
                 },
 
-                submitAttendance() {
+                async submitAttendance() {
+                    if (!this.supabase) { this.showAlert('Gagal menyimpan. Tiada sambungan ke pangkalan data.', 'error'); return; }
                     const className = this.entryForm.class.value;
                     const classType = this.entryForm.classType.value;
                     const date = this.entryForm.date.value;
                     const time = this.entryForm.time.value;
                     if (!date || !time) { this.showAlert('Sila pilih tarikh dan masa.', 'error'); return; }
-                    if (!this.attendanceData[className]) this.attendanceData[className] = {};
-                    if (!this.attendanceData[className][classType]) this.attendanceData[className][classType] = [];
-                    if (this.attendanceData[className][classType].find(r => r.date === date)) {
-                        this.showAlert(`Rekod untuk ${className} (${classType}) pada ${date} telah wujud.`, 'error');
-                        return;
-                    }
+
+                    const { data: existing, error: checkError } = await this.supabase.from('attendance_records').select('id').match({ class_name: className, class_type: classType, date: date }).maybeSingle();
+                    if (checkError) { this.showAlert(`Ralat: ${checkError.message}`, 'error'); return; }
+                    if (existing) { this.showAlert(`Rekod untuk ${className} (${classType}) pada ${date} telah wujud.`, 'error'); return; }
+
+                    let newRecord;
                     if (this.entryForm.sessionRemarkToggle.checked) {
                         const remark = this.entryForm.sessionRemarkInput.value.trim();
                         if (!remark) { this.showAlert('Sila masukkan sebab atau catatan.', 'error'); return; }
-                        const newRecord = { date, time, type: 'session_remark', remark };
-                        this.attendanceData[className][classType].push(newRecord);
-                        this.saveData();
-                        this.showAlert('Catatan sesi berjaya disimpan!', 'success');
-                        this.entryForm.sessionRemarkToggle.checked = false;
-                        this.toggleSessionRemark();
-                        this.entryForm.sessionRemarkInput.value = '';
+                        newRecord = { class_name: className, class_type: classType, date, time, record_type: 'session_remark', details: { remark } };
                     } else {
                         const activeStudents = (this.classRosters[className] || []).filter(s => s.status === 'Active');
                         if (activeStudents.length === 0) { this.showAlert('Tiada pelajar aktif dalam kelas ini.', 'error'); return; }
-                        const newRecord = { date, time, records: {} };
-                        const studentRows = this.entryForm.studentList.querySelectorAll('.grid');
-                        studentRows.forEach((row, index) => {
-                            const studentName = activeStudents[index].name;
-                            const status = row.querySelector(`input[name="status-${studentName.replace(/\s+/g, '-')}"]:checked`).value;
-                            const remarks = row.querySelector('.remarks-input').value.trim();
-                            newRecord.records[studentName] = { status, remarks: status === 'absent' ? remarks : '' };
+                        const records = {};
+                        activeStudents.forEach(student => {
+                            const status = document.querySelector(`input[name="status-${student.name.replace(/\s+/g, '-')}"]:checked`).value;
+                            const remarks = document.querySelector(`input.remarks-input[data-student="${student.name}"]`).value.trim();
+                            records[student.name] = { status, remarks: status === 'absent' ? remarks : '' };
                         });
-                        this.attendanceData[className][classType].push(newRecord);
-                        this.saveData();
-                        this.showAlert('Kehadiran berjaya direkodkan!', 'success');
+                        newRecord = { class_name: className, class_type: classType, date, time, record_type: 'attendance', details: records };
                     }
-                    this.render();
+
+                    const { error } = await this.supabase.from('attendance_records').insert(newRecord);
+                    if (error) {
+                        this.showAlert(`Gagal menyimpan data: ${error.message}`, 'error');
+                    } else {
+                        this.showAlert('Rekod berjaya disimpan secara online!', 'success');
+                        this.entryForm.sessionRemarkToggle.checked = false;
+                        this.toggleSessionRemark();
+                        this.entryForm.sessionRemarkInput.value = '';
+                        await this.loadData();
+                    }
+                },
+                
+                async executeDeleteSession(e) {
+                    if (!this.supabase) { this.showAlert('Gagal memadam. Tiada sambungan ke pangkalan data.', 'error'); return; }
+                    const { className, date, type } = e.currentTarget.dataset;
+                    const { error } = await this.supabase.from('attendance_records').delete().match({ class_name: className, date: date, class_type: type });
+                    if (error) {
+                        this.showAlert(`Gagal memadam rekod: ${error.message}`, 'error');
+                    } else {
+                        this.showAlert('Rekod berjaya dipadam.', 'success');
+                    }
+                    this.closeDeleteConfirmModal();
+                    this.closeSessionsModal();
+                    await this.loadData();
                 },
 
+                // --- DATA MIGRATION ---
+                checkLocalStorageData() {
+                    const localData = localStorage.getItem('attendanceData');
+                    if (localData && Object.keys(JSON.parse(localData)).length > 0) {
+                        this.migrateDataBtn.classList.remove('hidden');
+                    }
+                },
+
+                async migrateData() {
+                    if (!this.supabase) { this.showAlert('Sila konfigurasikan Supabase terlebih dahulu.', 'error'); return; }
+                    const localDataRaw = localStorage.getItem('attendanceData');
+                    if (!localDataRaw) { this.showAlert('Tiada data lama untuk dipindahkan.', 'error'); return; }
+                    
+                    this.showAlert('Memindahkan data... Ini mungkin mengambil sedikit masa.', 'success');
+                    this.migrateDataBtn.disabled = true;
+                    this.migrateDataBtn.textContent = 'Memindahkan...';
+
+                    const localData = JSON.parse(localDataRaw);
+                    const recordsToMigrate = [];
+                    for (const className in localData) {
+                        for (const classType in localData[className]) {
+                            localData[className][classType].forEach(record => {
+                                const newRecord = {
+                                    class_name: className,
+                                    class_type: classType,
+                                    date: record.date,
+                                    time: record.time,
+                                    record_type: record.type === 'session_remark' ? 'session_remark' : 'attendance',
+                                    details: record.type === 'session_remark' ? { remark: record.remark } : record.records,
+                                };
+                                recordsToMigrate.push(newRecord);
+                            });
+                        }
+                    }
+
+                    if (recordsToMigrate.length === 0) {
+                        this.showAlert('Tiada data untuk dipindahkan.', 'error');
+                        return;
+                    }
+                    
+                    // Upsert to avoid duplicates if migration is run multiple times
+                    const { error } = await this.supabase.from('attendance_records').upsert(recordsToMigrate, { onConflict: 'class_name,class_type,date' });
+
+                    if (error) {
+                         this.showAlert(`Pemindahan gagal: ${error.message}`, 'error');
+                         this.migrateDataBtn.disabled = false;
+                         this.migrateDataBtn.textContent = 'Cuba Pindah Semula';
+                    } else {
+                         this.showAlert('Semua data lama berjaya dipindahkan ke pangkalan data online!', 'success');
+                         localStorage.removeItem('attendanceData'); // Clear old data after successful migration
+                         this.migrateDataBtn.classList.add('hidden');
+                         await this.loadData();
+                    }
+                },
+                // --- MODALS, PRINTING, ALERTS ---
                 showRemarksModal(studentSummary) {
                     this.modal.studentName.textContent = `Sebab Tidak Hadir untuk ${studentSummary.name}`;
                     this.modal.content.innerHTML = studentSummary.remarks.length > 0 ? studentSummary.remarks.map(r => `
@@ -588,7 +727,9 @@
                     this.modal.container.classList.remove('hidden');
                 },
 
-                closeModal() { this.modal.container.classList.add('hidden'); },
+                closeModal() {
+                    this.modal.container.classList.add('hidden');
+                },
 
                 showSessionsModal(className) {
                     const selectedMonth = this.summaryView.monthSelect.value;
@@ -596,10 +737,15 @@
                     const sessions = [];
                     this.classTypes.forEach(classType => {
                         let records = this.attendanceData[className]?.[classType] || [];
-                        if (selectedMonth !== 'all') records = records.filter(record => record.date.startsWith(selectedMonth));
+                        if (selectedMonth !== 'all') {
+                            records = records.filter(record => record.date.startsWith(selectedMonth));
+                        }
                         records.forEach(record => {
-                            if (record.type === 'session_remark') sessions.push({ ...record, classType, isRemark: true });
-                            else sessions.push({ ...record, classType, isRemark: false });
+                            if (record.type === 'session_remark') {
+                                sessions.push({ ...record, classType, isRemark: true });
+                            } else {
+                                sessions.push({ ...record, classType, isRemark: false });
+                            }
                         });
                     });
                     sessions.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
@@ -614,7 +760,9 @@
                     this.sessionsModal.container.classList.remove('hidden');
                 },
 
-                closeSessionsModal() { this.sessionsModal.container.classList.add('hidden'); },
+                closeSessionsModal() {
+                    this.sessionsModal.container.classList.add('hidden');
+                },
 
                 promptDeleteSession({ className, date, type }) {
                     this.deleteConfirmModal.message.textContent = `Adakah anda pasti mahu memadam rekod untuk kelas ${className} (${type}) pada ${date}? Tindakan ini tidak boleh diubah.`;
@@ -624,94 +772,65 @@
                     this.deleteConfirmModal.container.classList.remove('hidden');
                 },
 
-                closeDeleteConfirmModal() { this.deleteConfirmModal.container.classList.add('hidden'); },
-
-                executeDeleteSession(e) {
-                    const { className, date, type } = e.currentTarget.dataset;
-                    const records = this.attendanceData[className]?.[type];
-                    if (records) {
-                        const recordIndex = records.findIndex(r => r.date === date);
-                        if (recordIndex > -1) {
-                            records.splice(recordIndex, 1);
-                            this.saveData();
-                            this.showAlert('Rekod berjaya dipadam.', 'success');
-                        }
-                    }
-                    this.closeDeleteConfirmModal();
-                    this.closeSessionsModal();
-                    this.render();
+                closeDeleteConfirmModal() {
+                    this.deleteConfirmModal.container.classList.add('hidden');
                 },
 
                 generatePrintableReport() {
                     const selectedClass = this.dashboardView.classSelect.value;
                     const selectedClassType = this.dashboardView.classTypeSelect.value;
                     const selectedMonth = this.dashboardView.monthSelect.value;
-                    
                     if (selectedMonth === 'all') {
                         this.showAlert('Sila pilih bulan yang spesifik untuk mencetak laporan.', 'error');
                         return;
                     }
-
                     const students = this.classRosters[selectedClass] || [];
                     const records = this.attendanceData[selectedClass]?.[selectedClassType] || [];
                     const monthRecords = records.filter(r => r.date.startsWith(selectedMonth));
-                    
                     const sessionDates = [...new Set(monthRecords.map(r => r.date))].sort();
-
                     if (sessionDates.length === 0) {
                         this.showAlert('Tiada rekod untuk dicetak bagi bulan yang dipilih.', 'error');
                         return;
                     }
-
                     const date = new Date(selectedMonth + '-02');
                     const monthName = date.toLocaleString('ms-MY', { month: 'long', year: 'numeric' });
-
-                    // Header
                     this.printSection.header.innerHTML = `
                         <h2 style="font-size: 1.5rem; font-weight: bold;">Laporan Kehadiran Bulanan</h2>
                         <p><strong>Kelas:</strong> ${selectedClass} (${selectedClassType})</p>
                         <p><strong>Bulan:</strong> ${monthName}</p>
                     `;
-                    
-                    // Table Header
                     let tableHTML = '<thead><tr><th style="width: 300px;">Nama Pelajar</th>';
                     sessionDates.forEach(dateStr => {
                         const day = new Date(dateStr + 'T00:00:00').getDate();
                         tableHTML += `<th style="width: 20px; text-align: center;">${day}</th>`;
                     });
                     tableHTML += '<th style="text-align: center;">Hadir</th><th style="text-align: center;">Tidak Hadir</th><th style="text-align: center;">%</th></tr></thead>';
-                    
-                    // Table Body
                     tableHTML += '<tbody>';
                     students.forEach(studentObj => {
                         let presentCount = 0;
                         let absentCount = 0;
                         tableHTML += `<tr><td>${studentObj.name} ${studentObj.status === 'Inactive' ? '(T/A)' : ''}</td>`;
-                        
                         sessionDates.forEach(dateStr => {
-                            const recordForDay = monthRecords.find(r => r.date === dateStr);
                             let cellContent = '';
-
+                            const recordForDay = monthRecords.find(r => r.date === dateStr);
                             if (recordForDay) {
                                 if (recordForDay.type === 'session_remark') {
-                                    cellContent = 'C'; // Cuti
+                                    cellContent = 'C';
                                 } else if (recordForDay.records[studentObj.name]) {
                                     const status = recordForDay.records[studentObj.name].status;
                                     if (status === 'present') {
-                                        cellContent = '/';
+                                        cellContent = 'H';
                                         presentCount++;
                                     } else {
-                                        cellContent = 'O';
+                                        cellContent = 'T';
                                         absentCount++;
                                     }
                                 }
                             }
                             tableHTML += `<td style="text-align: center;">${cellContent}</td>`;
                         });
-
                         const totalClasses = presentCount + absentCount;
-                        const percentage = totalClasses > 0 ? ((presentCount / totalClasses) * 100).toFixed(0) : 0;
-
+                        const percentage = totalClasses > 0 ? (presentCount / totalClasses * 100).toFixed(0) : 0;
                         tableHTML += `<td style="text-align: center;">${presentCount}</td>`;
                         tableHTML += `<td style="text-align: center;">${absentCount}</td>`;
                         tableHTML += `<td style="text-align: center;">${percentage}%</td>`;
@@ -719,10 +838,8 @@
                     });
                     tableHTML += '</tbody>';
                     this.printSection.table.innerHTML = tableHTML;
-
-                    // Summary & Footer
                     this.printSection.summary.innerHTML = `
-                        <p style="font-size: 0.8rem;"><strong>Petunjuk:</strong> / = Hadir, O = Tidak Hadir, C = Cuti / Acara Khas, (T/A) = Tidak Aktif</p>
+                        <p style="font-size: 0.8rem;"><strong>Petunjuk:</strong> H = Hadir, T = Tidak Hadir, C = Cuti / Acara Khas, (T/A) = Tidak Aktif</p>
                     `;
                     this.printSection.footer.innerHTML = `
                         <div style="margin-top: 40px; display: flex; justify-content: space-between;">
@@ -730,7 +847,6 @@
                             <div><p>Tarikh: ______________</p></div>
                         </div>
                     `;
-
                     window.print();
                 },
                 
