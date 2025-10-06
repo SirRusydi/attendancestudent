@@ -284,7 +284,7 @@
                     if (this.supabaseUrl && this.supabaseUrl !== 'PASTE_YOUR_SUPABASE_URL_HERE' && this.supabaseAnonKey && this.supabaseAnonKey !== 'PASTE_YOUR_SUPABASE_ANON_KEY_HERE') {
                         try {
                             this.supabase = supabase.createClient(this.supabaseUrl, this.supabaseAnonKey);
-                            this.updateOnlineStatus(true, 'Disambungkan ke Supabase');
+                            this.updateOnlineStatus(true, 'Online');
                         } catch (error) {
                             console.error('Supabase initialization failed:', error);
                              this.updateOnlineStatus(false, 'Gagal sambung ke Supabase');
@@ -819,10 +819,10 @@
                                 } else if (recordForDay.records[studentObj.name]) {
                                     const status = recordForDay.records[studentObj.name].status;
                                     if (status === 'present') {
-                                        cellContent = 'H';
+                                        cellContent = '/';
                                         presentCount++;
                                     } else {
-                                        cellContent = 'T';
+                                        cellContent = 'O';
                                         absentCount++;
                                     }
                                 }
@@ -839,11 +839,11 @@
                     tableHTML += '</tbody>';
                     this.printSection.table.innerHTML = tableHTML;
                     this.printSection.summary.innerHTML = `
-                        <p style="font-size: 0.8rem;"><strong>Petunjuk:</strong> H = Hadir, T = Tidak Hadir, C = Cuti / Acara Khas, (T/A) = Tidak Aktif</p>
+                        <p style="font-size: 0.8rem;"><strong>Petunjuk:</strong> / = Hadir, O = Tidak Hadir, C = Cuti / Acara Khas, (T/A) = Tidak Aktif</p>
                     `;
                     this.printSection.footer.innerHTML = `
                         <div style="margin-top: 40px; display: flex; justify-content: space-between;">
-                            <div><p>_________________________</p><p>Tandatangan Guru</p></div>
+                            <div><p>_________________________</p><p>Tandatangan Pensyarah</p></div>
                             <div><p>Tarikh: ______________</p></div>
                         </div>
                     `;
@@ -865,4 +865,5 @@
     </script>
 </body>
 </html>
+
 
