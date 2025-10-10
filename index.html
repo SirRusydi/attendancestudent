@@ -952,7 +952,10 @@
                         </div>`;
                     
                     this.printSection.innerHTML = `${printHeader}<table class="w-full border-collapse">${tableHTML}</table>${printSummary}${printFooter}`;
+                    
+                    this.printSection.classList.remove('hidden');
                     window.print();
+                    this.printSection.classList.add('hidden');
                 },
 
                 exportToCSV() {
@@ -1029,5 +1032,6 @@
     </script>
 </body>
 </html>
+
 
 
