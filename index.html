@@ -1,209 +1,231 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class=""> <!-- Kelas 'dark' akan ditambah di sini oleh JS -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Attendance Monitoring System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Supabase Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        :root {
+            --bg-primary: #f3f4f6; /* gray-100 */
+            --bg-secondary: #ffffff; /* white */
+            --text-primary: #1f2937; /* gray-800 */
+            --text-secondary: #6b7280; /* gray-500 */
+            --border-color: #e5e7eb; /* gray-200 */
+            --accent-color: #3b82f6; /* blue-500 */
+        }
+
+        html.dark {
+            --bg-primary: #111827; /* gray-900 */
+            --bg-secondary: #1f2937; /* gray-800 */
+            --text-primary: #f9fafb; /* gray-50 */
+            --text-secondary: #9ca3af; /* gray-400 */
+            --border-color: #374151; /* gray-700 */
+            --accent-color: #60a5fa; /* blue-400 */
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .tab-btn {
+            transition: color 0.2s, border-color 0.2s;
         }
         .tab-active {
-            border-bottom: 2px solid #3b82f6;
-            color: #3b82f6;
+            border-bottom: 2px solid var(--accent-color);
+            color: var(--accent-color);
             font-weight: 600;
         }
-        .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.5);
+        
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); }
+        .card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); transition: background-color 0.3s, border-color 0.3s; }
+        input, select { 
+            background-color: var(--bg-primary); 
+            border-color: var(--border-color); 
+            color: var(--text-primary);
+            transition: background-color 0.3s, border-color 0.3s;
         }
+        
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            #print-section, #print-section * {
-                visibility: visible;
-            }
-            #print-section {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                padding: 20px;
-            }
-            table {
-                font-size: 10px;
-            }
-            th, td {
-                border: 1px solid #ccc;
-                padding: 4px;
-            }
+            body * { visibility: hidden; }
+            #print-section, #print-section * { visibility: visible; }
+            #print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; color: black; }
+            table { font-size: 10px; }
+            th, td { border: 1px solid #ccc; padding: 4px; }
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="transition-colors duration-300">
 
     <div id="app" class="container mx-auto p-4 md:p-8 max-w-6xl">
         <header class="mb-8">
             <div class="flex justify-between items-center">
-                <div></div> <!-- Spacer -->
-                <div class="text-center">
-                    <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Sistem Kehadiran Pelajar 2025/2026</h1>
-                    <p class="text-gray-500 mt-2">Pemantauan Kehadiran Pelajar Sesi 2025/2026</p>
+                <div class="w-1/3">
+                     <p id="welcome-message" class="text-lg" style="color: var(--text-secondary);"></p>
                 </div>
-                <div id="online-status" class="text-right">
-                    <!-- Status indicator will be added here -->
+                <div class="text-center w-1/3">
+                    <h1 class="text-3xl md:text-4xl font-bold">Sistem Kehadiran Pelajar</h1>
+                </div>
+                <div class="w-1/3 flex justify-end items-center gap-4">
+                    <div id="online-status" class="text-right"></div>
+                    <button id="theme-toggle" class="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); ring-color: var(--accent-color);">
+                        <!-- Ikon akan diisi oleh JS -->
+                    </button>
                 </div>
             </div>
              <div class="text-center mt-4">
-                <button id="migrate-data-btn" class="hidden px-4 py-2 bg-amber-500 text-white font-semibold rounded-md shadow-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400 transition duration-150">
+                <button id="migrate-data-btn" class="hidden px-4 py-2 bg-amber-500 text-white font-semibold rounded-md shadow-md hover:bg-amber-600">
                     Pindah Data Lama ke Online
                 </button>
             </div>
         </header>
 
         <!-- Tabs -->
-        <div class="mb-6 border-b border-gray-200">
+        <div class="mb-6 border-b" style="border-color: var(--border-color);">
             <nav class="flex space-x-4" aria-label="Tabs">
-                <button id="tab-entry" class="px-3 py-2 font-medium text-sm rounded-t-md tab-active">Catat Kehadiran</button>
-                <button id="tab-dashboard" class="px-3 py-2 font-medium text-sm rounded-t-md text-gray-500 hover:text-gray-700">Papar Kehadiran</button>
-                <button id="tab-summary" class="px-3 py-2 font-medium text-sm rounded-t-md text-gray-500 hover:text-gray-700">Ringkasan Kelas</button>
+                <button data-tab="entry" class="tab-btn px-3 py-2 font-medium text-sm rounded-t-md tab-active">Catat Kehadiran</button>
+                <button data-tab="dashboard" class="tab-btn px-3 py-2 font-medium text-sm rounded-t-md" style="color: var(--text-secondary);">Papar Kehadiran</button>
+                <button data-tab="summary" class="tab-btn px-3 py-2 font-medium text-sm rounded-t-md" style="color: var(--text-secondary);">Ringkasan Kelas</button>
+                <button data-tab="settings" class="tab-btn px-3 py-2 font-medium text-sm rounded-t-md" style="color: var(--text-secondary);">Tetapan</button>
             </nav>
         </div>
 
         <!-- Main Content -->
         <main>
-            <!-- Attendance Entry Section -->
-            <div id="content-entry">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-700">Daftar Kehadiran</h2>
+            <!-- Content Sections -->
+            <div id="content-entry" class="tab-content">
+                 <div class="card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-6">Daftar Kehadiran</h2>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                         <div>
-                            <label for="entry-date" class="block text-sm font-medium text-gray-600 mb-1">Tarikh</label>
-                            <input type="date" id="entry-date" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <label for="entry-date" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Tarikh</label>
+                            <input type="date" id="entry-date" class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         <div>
-                            <label for="entry-time" class="block text-sm font-medium text-gray-600 mb-1">Masa</label>
-                            <input type="time" id="entry-time" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <label for="entry-time" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Masa</label>
+                            <input type="time" id="entry-time" class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         <div>
-                            <label for="entry-class" class="block text-sm font-medium text-gray-600 mb-1">Nama Kelas</label>
-                            <select id="entry-class" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                <!-- Options will be populated by JS -->
-                            </select>
+                            <label for="entry-class" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Nama Kelas</label>
+                            <select id="entry-class" class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
                         </div>
                         <div>
-                            <label for="entry-class-type" class="block text-sm font-medium text-gray-600 mb-1">Mod Kelas</label>
-                            <select id="entry-class-type" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                <!-- Options will be populated by JS -->
-                            </select>
+                            <label for="entry-class-type" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Mod Kelas</label>
+                            <select id="entry-class-type" class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
                         </div>
                     </div>
-
-                    <!-- Holiday/Remark Section -->
-                    <div class="mt-6 border-t pt-4">
+                    <div class="mt-6 border-t pt-4" style="border-color: var(--border-color);">
                         <div class="flex items-center">
-                            <input id="session-remark-toggle" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                            <label for="session-remark-toggle" class="ml-2 block text-sm font-medium text-gray-700">Tandakan sesi ini sebagai Cuti Umum atau Acara Khas (tiada kehadiran diambil)</label>
+                            <input id="session-remark-toggle" type="checkbox" class="h-4 w-4 rounded focus:ring-blue-500" style="color: var(--accent-color); border-color: var(--border-color);">
+                            <label for="session-remark-toggle" class="ml-2 block text-sm font-medium">Tandakan sesi ini sebagai Cuti Umum atau Acara Khas</label>
                         </div>
                         <div id="session-remark-container" class="hidden mt-4">
-                            <label for="session-remark-input" class="block text-sm font-medium text-gray-600 mb-1">Sebab / Catatan</label>
-                            <input type="text" id="session-remark-input" placeholder="Cth: Cuti Hari Kemerdekaan, Kelas Batal" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <label for="session-remark-input" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Sebab / Catatan</label>
+                            <input type="text" id="session-remark-input" placeholder="Cth: Cuti Hari Kemerdekaan, Kelas Batal" class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         </div>
                     </div>
-                    
-                    <h3 id="student-list-header" class="text-lg font-semibold text-gray-700 my-4 border-t pt-4">Senarai Pelajar</h3>
-                    <div id="student-list" class="space-y-4">
-                        <!-- Student rows will be populated by JS -->
-                    </div>
-
+                    <h3 id="student-list-header" class="text-lg font-semibold my-4 border-t pt-4" style="border-color: var(--border-color);">Senarai Pelajar</h3>
+                    <div id="student-list" class="space-y-4"></div>
                     <div class="mt-8 flex justify-end">
-                        <button id="submit-attendance" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
-                            Catat Kehadiran
-                        </button>
+                        <button id="submit-attendance" class="px-6 py-2 text-white font-semibold rounded-md shadow-md transition duration-150" style="background-color: var(--accent-color);">Catat Kehadiran</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Dashboard Section -->
-            <div id="content-dashboard" class="hidden">
-                 <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-gray-700">Data Kehadiran Pelajar</h2>
-                        <button id="print-report-btn" class="px-4 py-2 bg-gray-600 text-white font-semibold rounded-md shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" />
-                            </svg>
-                            Cetak Laporan
-                        </button>
+            <div id="content-dashboard" class="tab-content hidden">
+                 <div class="card p-6 rounded-xl shadow-lg">
+                    <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+                        <h2 class="text-2xl font-bold">Data Kehadiran Pelajar</h2>
+                        <div class="flex items-center gap-2">
+                            <button id="export-csv-btn" class="px-4 py-2 text-sm font-semibold rounded-md shadow-md transition flex items-center gap-2" style="background-color: var(--bg-primary); border: 1px solid var(--border-color);">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                                Eksport CSV
+                            </button>
+                            <button id="print-report-btn" class="px-4 py-2 text-sm text-white font-semibold rounded-md shadow-md transition flex items-center gap-2" style="background-color: var(--accent-color);">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm-6 8h6v4H7v-4z" clip-rule="evenodd" /></svg>
+                                Cetak Laporan
+                            </button>
+                        </div>
                     </div>
                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                          <div>
-                             <label for="dashboard-class" class="block text-sm font-medium text-gray-600 mb-1">Pilih Kelas</label>
-                             <select id="dashboard-class" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                 <!-- Options will be populated by JS -->
-                             </select>
+                             <label for="dashboard-class" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Pilih Kelas</label>
+                             <select id="dashboard-class" class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
                          </div>
                          <div>
-                            <label for="dashboard-class-type" class="block text-sm font-medium text-gray-600 mb-1">Pilih Mod Kelas</label>
-                            <select id="dashboard-class-type" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                <!-- Options will be populated by JS -->
-                            </select>
+                            <label for="dashboard-class-type" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Pilih Mod Kelas</label>
+                            <select id="dashboard-class-type" class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
                         </div>
                         <div>
-                            <label for="dashboard-month" class="block text-sm font-medium text-gray-600 mb-1">Pilih Bulan</label>
-                            <select id="dashboard-month" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                <!-- Options will be populated by JS -->
-                            </select>
+                            <label for="dashboard-month" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Pilih Bulan</label>
+                            <select id="dashboard-month" class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
                         </div>
                      </div>
-
                      <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pelajar</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% Kehadiran</th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ketidakhadiran</th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tindakan</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dashboard-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Dashboard rows will be populated by JS -->
-                            </tbody>
+                        <table class="min-w-full">
+                            <thead><tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Nama Pelajar</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">% Kehadiran</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Ketidakhadiran</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Tindakan</th>
+                            </tr></thead>
+                            <tbody id="dashboard-body" class="divide-y" style="border-color: var(--border-color);"></tbody>
                         </table>
                     </div>
                  </div>
             </div>
 
-            <!-- Summary Section -->
-            <div id="content-summary" class="hidden">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-700">Ringkasan Kehadiran Keseluruhan</h2>
+            <div id="content-summary" class="tab-content hidden">
+                 <div class="card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-6">Ringkasan Kehadiran Keseluruhan</h2>
                     <div class="mb-6">
-                        <label for="summary-month" class="block text-sm font-medium text-gray-600 mb-1">Tapis Mengikut Bulan</label>
-                        <select id="summary-month" class="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                            <!-- Options will be populated by JS -->
-                        </select>
+                        <label for="summary-month" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Tapis Mengikut Bulan</label>
+                        <select id="summary-month" class="w-full md:w-1/3 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kelas</th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Kelas Dijalankan</th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Kehadiran Keseluruhan (%)</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kehadiran Tertinggi</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kehadiran Terendah</th>
-                                </tr>
-                            </thead>
-                            <tbody id="summary-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Summary rows will be populated by JS -->
-                            </tbody>
+                        <table class="min-w-full">
+                           <thead><tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Nama Kelas</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Jumlah Kelas</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Kehadiran (%)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Kehadiran Tertinggi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Kehadiran Terendah</th>
+                            </tr></thead>
+                            <tbody id="summary-body" class="divide-y" style="border-color: var(--border-color);"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="content-settings" class="tab-content hidden">
+                <div class="card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-6">Tetapan Aplikasi</h2>
+                    <div class="space-y-6">
+                        <div>
+                            <label for="teacher-name" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Nama Guru</label>
+                            <input type="text" id="teacher-name" class="w-full md:w-1/2 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="school-name" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Nama Sekolah / Institusi</label>
+                            <input type="text" id="school-name" class="w-full md:w-1/2 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                         <div>
+                            <label for="google-sheet-url" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Pautan Google Sheet (CSV)</label>
+                            <input type="text" id="google-sheet-url" class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div class="mt-8 flex justify-end">
+                        <button id="save-settings-btn" class="px-6 py-2 text-white font-semibold rounded-md shadow-md transition duration-150" style="background-color: var(--accent-color);">
+                            Simpan Tetapan
+                        </button>
                     </div>
                 </div>
             </div>
@@ -212,58 +234,51 @@
 
     <!-- Modals -->
     <div id="remarks-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
-        <div class="bg-white rounded-lg shadow-xl w-11/12 md:max-w-lg mx-auto p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-800" id="modal-student-name"></h3>
-                <button id="close-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
-            </div>
-            <div id="modal-remarks-content" class="text-sm text-gray-600 space-y-2 max-h-60 overflow-y-auto"></div>
+        <div class="card rounded-lg shadow-xl w-11/12 md:max-w-lg mx-auto p-6">
+            <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-semibold" id="modal-student-name"></h3><button id="close-modal" class="text-2xl" style="color: var(--text-secondary);">&times;</button></div>
+            <div id="modal-remarks-content" class="text-sm space-y-2 max-h-60 overflow-y-auto" style="color: var(--text-secondary);"></div>
         </div>
     </div>
     <div id="sessions-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
-        <div class="bg-white rounded-lg shadow-xl w-11/12 md:max-w-lg mx-auto p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-800" id="sessions-modal-title"></h3>
-                <button id="close-sessions-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
-            </div>
-            <div id="sessions-modal-content" class="text-sm text-gray-600 space-y-2 max-h-60 overflow-y-auto"></div>
+        <div class="card rounded-lg shadow-xl w-11/12 md:max-w-lg mx-auto p-6">
+            <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-semibold" id="sessions-modal-title"></h3><button id="close-sessions-modal" class="text-2xl" style="color: var(--text-secondary);">&times;</button></div>
+            <div id="sessions-modal-content" class="text-sm space-y-2 max-h-60 overflow-y-auto" style="color: var(--text-secondary);"></div>
         </div>
     </div>
     <div id="delete-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
-        <div class="bg-white rounded-lg shadow-xl w-11/12 md:max-w-md mx-auto p-6">
-            <h3 class="text-xl font-semibold text-gray-800 mb-4">Sahkan Padam</h3>
-            <p id="delete-confirm-message" class="text-gray-600 mb-6"></p>
+        <div class="card rounded-lg shadow-xl w-11/12 md:max-w-md mx-auto p-6">
+            <h3 class="text-xl font-semibold mb-4">Sahkan Padam</h3>
+            <p id="delete-confirm-message" class="mb-6" style="color: var(--text-secondary);"></p>
             <div class="flex justify-end space-x-4">
-                <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-md hover:bg-gray-300">Batal</button>
-                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700">Padam</button>
+                <button id="cancel-delete-btn" class="px-4 py-2 font-semibold rounded-md" style="background-color: var(--bg-primary); border: 1px solid var(--border-color);">Batal</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md">Padam</button>
             </div>
         </div>
     </div>
-    <div id="custom-alert" class="fixed top-5 right-5 z-50 bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hidden transition-transform translate-x-full">
+    
+    <!-- Custom Alert -->
+    <div id="custom-alert" class="fixed top-5 right-5 z-50 text-white py-2 px-4 rounded-lg shadow-md hidden opacity-0 transition-opacity duration-300">
         <p id="alert-message"></p>
     </div>
 
     <!-- Printable Report Section -->
-    <div id="print-section">
-        <div id="print-header" class="mb-4"></div>
-        <table id="print-table" class="w-full border-collapse"></table>
-        <div id="print-summary" class="mt-4"></div>
-        <div id="print-footer" class="mt-8 text-sm"></div>
-    </div>
-
+    <div id="print-section" class="hidden"></div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const app = {
                 // --- CONFIGURATION ---
-                googleSheetUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlfpghvp8zv38Kj6EpVEeQzALCIh71ZrmH2WwxlhcOEo1C16I_xXP1Fvqruu6p_qPvlPw37TWYlbzy/pub?output=csv',
-                
-                // ** TAMPAL (PASTE) SUPABASE URL & ANON KEY ANDA DI SINI **
-                supabaseUrl: 'https://bihbjelmkclckgfmsgqu.supabase.co', 
-                supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpaGJqZWxta2NsY2tnZm1zZ3F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0NzU0MzIsImV4cCI6MjA3NTA1MTQzMn0.Mjszb-CHWKFr_IIauiFsa3aE8S70lVXMgKo2oYaIBPA',
+                supabaseUrl: '', 
+                supabaseAnonKey: '',
 
                 // --- STATE ---
                 supabase: null,
+                settings: {
+                    teacherName: 'MOHD RUSYDI BIN MOHD ROSLI',
+                    schoolName: 'KOLEJ MATRIKULASI MELAKA',
+                    googleSheetUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlfpghvp8zv38Kj6EpVEeQzALCIh71ZrmH2WwxlhcOEo1C16I_xXP1Fvqruu6p_qPvlPw37TWYlbzy/pub?output=csv',
+                    theme: 'light'
+                },
                 classTypes: ['Practical', 'Tutorial'],
                 classRosters: {}, 
                 attendanceData: {}, 
@@ -271,6 +286,8 @@
                 // --- INITIALIZATION ---
                 async init() {
                     this.cacheDOM();
+                    this.loadSettings();
+                    this.applyTheme();
                     this.initializeSupabase();
                     await this.loadRostersFromGoogleSheet();
                     await this.loadData();
@@ -280,31 +297,160 @@
                     this.checkLocalStorageData();
                 },
 
-                initializeSupabase() {
-                    if (this.supabaseUrl && this.supabaseUrl !== 'PASTE_YOUR_SUPABASE_URL_HERE' && this.supabaseAnonKey && this.supabaseAnonKey !== 'PASTE_YOUR_SUPABASE_ANON_KEY_HERE') {
-                        try {
-                            this.supabase = supabase.createClient(this.supabaseUrl, this.supabaseAnonKey);
-                            this.updateOnlineStatus(true, 'Online');
-                        } catch (error) {
-                            console.error('Supabase initialization failed:', error);
-                             this.updateOnlineStatus(false, 'Gagal sambung ke Supabase');
-                        }
-                    } else {
-                         this.updateOnlineStatus(false, 'Supabase tidak dikonfigurasi');
-                    }
+                // --- SETUP & CONFIG ---
+                cacheDOM() {
+                    // Main layout
+                    this.app = document.getElementById('app');
+                    this.welcomeMessage = document.getElementById('welcome-message');
+                    this.onlineStatus = document.getElementById('online-status');
+                    this.themeToggle = document.getElementById('theme-toggle');
+                    this.migrateDataBtn = document.getElementById('migrate-data-btn');
+                    this.tabButtons = document.querySelectorAll('.tab-btn');
+                    this.tabContents = document.querySelectorAll('.tab-content');
+                    
+                    // Entry form
+                    this.entryForm = {
+                        date: document.getElementById('entry-date'),
+                        time: document.getElementById('entry-time'),
+                        class: document.getElementById('entry-class'),
+                        classType: document.getElementById('entry-class-type'),
+                        studentList: document.getElementById('student-list'),
+                        submitBtn: document.getElementById('submit-attendance'),
+                        studentListHeader: document.getElementById('student-list-header'),
+                        sessionRemarkToggle: document.getElementById('session-remark-toggle'),
+                        sessionRemarkContainer: document.getElementById('session-remark-container'),
+                        sessionRemarkInput: document.getElementById('session-remark-input')
+                    };
+
+                    // Dashboard view
+                    this.dashboardView = {
+                        classSelect: document.getElementById('dashboard-class'),
+                        classTypeSelect: document.getElementById('dashboard-class-type'),
+                        monthSelect: document.getElementById('dashboard-month'),
+                        body: document.getElementById('dashboard-body'),
+                        printBtn: document.getElementById('print-report-btn'),
+                        exportCsvBtn: document.getElementById('export-csv-btn')
+                    };
+
+                    // Summary view
+                    this.summaryView = {
+                        monthSelect: document.getElementById('summary-month'),
+                        body: document.getElementById('summary-body')
+                    };
+
+                    // Settings view
+                    this.settingsView = {
+                        teacherName: document.getElementById('teacher-name'),
+                        schoolName: document.getElementById('school-name'),
+                        googleSheetUrl: document.getElementById('google-sheet-url'),
+                        saveBtn: document.getElementById('save-settings-btn')
+                    };
+
+                    // Modals & Alerts
+                    this.modal = { container: document.getElementById('remarks-modal'), studentName: document.getElementById('modal-student-name'), content: document.getElementById('modal-remarks-content'), closeBtn: document.getElementById('close-modal') };
+                    this.sessionsModal = { container: document.getElementById('sessions-modal'), title: document.getElementById('sessions-modal-title'), content: document.getElementById('sessions-modal-content'), closeBtn: document.getElementById('close-sessions-modal') };
+                    this.deleteConfirmModal = { container: document.getElementById('delete-confirm-modal'), message: document.getElementById('delete-confirm-message'), confirmBtn: document.getElementById('confirm-delete-btn'), cancelBtn: document.getElementById('cancel-delete-btn') };
+                    this.alert = { container: document.getElementById('custom-alert'), message: document.getElementById('alert-message') };
+                    this.printSection = document.getElementById('print-section');
                 },
                 
+                bindEvents() {
+                    this.tabButtons.forEach(button => {
+                        button.addEventListener('click', () => this.switchTab(button.dataset.tab));
+                    });
+                    this.themeToggle.addEventListener('click', this.toggleTheme.bind(this));
+                    this.settingsView.saveBtn.addEventListener('click', this.saveSettings.bind(this));
+                    this.migrateDataBtn.addEventListener('click', this.migrateData.bind(this));
+                    this.entryForm.submitBtn.addEventListener('click', this.submitAttendance.bind(this));
+                    this.entryForm.class.addEventListener('change', this.renderStudentEntryList.bind(this));
+                    this.entryForm.sessionRemarkToggle.addEventListener('change', this.toggleSessionRemark.bind(this));
+                    this.dashboardView.classSelect.addEventListener('change', this.renderDashboard.bind(this));
+                    this.dashboardView.classTypeSelect.addEventListener('change', this.renderDashboard.bind(this));
+                    this.dashboardView.monthSelect.addEventListener('change', this.renderDashboard.bind(this));
+                    this.dashboardView.printBtn.addEventListener('click', this.generatePrintableReport.bind(this));
+                    this.dashboardView.exportCsvBtn.addEventListener('click', this.exportToCSV.bind(this));
+                    this.summaryView.monthSelect.addEventListener('change', this.renderSummary.bind(this));
+                    this.modal.closeBtn.addEventListener('click', () => this.closeModal('modal'));
+                    this.modal.container.addEventListener('click', (e) => { if (e.target === this.modal.container) this.closeModal('modal'); });
+                    this.sessionsModal.closeBtn.addEventListener('click', () => this.closeModal('sessionsModal'));
+                    this.sessionsModal.container.addEventListener('click', (e) => { if (e.target === this.sessionsModal.container) this.closeModal('sessionsModal'); });
+                    this.deleteConfirmModal.cancelBtn.addEventListener('click', () => this.closeModal('deleteConfirmModal'));
+                    this.deleteConfirmModal.confirmBtn.addEventListener('click', this.executeDeleteSession.bind(this));
+                },
+
+                loadSettings() {
+                    const savedSettings = localStorage.getItem('attendanceAppSettings');
+                    if (savedSettings) {
+                        this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
+                    }
+                    this.settingsView.teacherName.value = this.settings.teacherName || '';
+                    this.settingsView.schoolName.value = this.settings.schoolName || '';
+                    this.settingsView.googleSheetUrl.value = this.settings.googleSheetUrl || '';
+                    if (this.settings.teacherName) {
+                        this.welcomeMessage.textContent = `Selamat Datang, ${this.settings.teacherName}`;
+                    }
+                },
+
+                saveSettings() {
+                    this.settings.teacherName = this.settingsView.teacherName.value.trim();
+                    this.settings.schoolName = this.settingsView.schoolName.value.trim();
+                    this.settings.googleSheetUrl = this.settingsView.googleSheetUrl.value.trim();
+                    localStorage.setItem('attendanceAppSettings', JSON.stringify(this.settings));
+                    this.showAlert('Tetapan berjaya disimpan!', 'success');
+                    this.loadSettings();
+                    this.loadRostersFromGoogleSheet().then(() => this.render());
+                },
+
+                applyTheme() {
+                    if (this.settings.theme === 'dark') {
+                        document.documentElement.classList.add('dark');
+                        this.themeToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>`;
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        this.themeToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.95a1 1 0 010-1.414l-.707-.707a1 1 0 00-1.414 1.414l.707.707a1 1 0 011.414 0zm.464-10.607a1 1 0 00-1.414 0l-.707.707a1 1 0 001.414 1.414l.707-.707a1 1 0 000-1.414zM3 11a1 1 0 100-2H2a1 1 0 100 2h1z" clip-rule="evenodd" /></svg>`;
+                    }
+                },
+
+                toggleTheme() {
+                    this.settings.theme = this.settings.theme === 'light' ? 'dark' : 'light';
+                    this.applyTheme();
+                    localStorage.setItem('attendanceAppSettings', JSON.stringify(this.settings));
+                },
+
+                initializeSupabase() {
+                    // ** TAMPAL (PASTE) SUPABASE URL & ANON KEY ANDA DI SINI **
+                    this.supabaseUrl = 'https://bihbjelmkclckgfmsgqu.supabase.co';
+                    this.supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpaGJqZWxta2NsY2tnZm1zZ3F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0NzU0MzIsImV4cCI6MjA3NTA1MTQzMn0.Mjszb-CHWKFr_IIauiFsa3aE8S70lVXMgKo2oYaIBPA';
+
+                    if (this.supabaseUrl && this.supabaseUrl !== 'https://bihbjelmkclckgfmsgqu.supabase.co' && this.supabaseAnonKey && this.supabaseAnonKey !== 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpaGJqZWxta2NsY2tnZm1zZ3F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0NzU0MzIsImV4cCI6MjA3NTA1MTQzMn0.Mjszb-CHWKFr_IIauiFsa3aE8S70lVXMgKo2oYaIBPA') {
+                        try {
+                            this.supabase = supabase.createClient(this.supabaseUrl, this.supabaseAnonKey);
+                            this.updateOnlineStatus(true, 'Disambungkan ke Supabase');
+                        } catch (error) {
+                            console.error('Supabase initialization failed:', error);
+                            this.updateOnlineStatus(false, 'Gagal sambung ke Supabase');
+                        }
+                    } else {
+                        this.updateOnlineStatus(false, 'Supabase tidak dikonfigurasi');
+                    }
+                },
+                 
+                updateOnlineStatus(isOnline, message) {
+                    const statusColor = isOnline ? 'bg-green-500' : 'bg-red-500';
+                    const statusDot = `<span class="h-3 w-3 rounded-full ${statusColor} inline-block mr-2"></span>`;
+                    this.onlineStatus.innerHTML = `<div class="flex items-center text-sm">${statusDot} ${message}</div>`;
+                },
+
                 async loadRostersFromGoogleSheet() {
-                    if (!this.googleSheetUrl || this.googleSheetUrl === 'PASTE_YOUR_GOOGLE_SHEET_CSV_URL_HERE') {
-                        this.showAlert('Pautan Google Sheet tidak ditetapkan. Menggunakan data contoh.', 'error');
-                        this.classRosters = {
-                            'Contoh Kelas A': [{ name: 'Pelajar Contoh 1', status: 'Active' }, { name: 'Pelajar Contoh 2', status: 'Active' }],
-                            'Contoh Kelas B': [{ name: 'Pelajar Contoh 3', status: 'Active' }, { name: 'Pelajar Contoh 4', status: 'Inactive' }]
-                        };
+                    const url = this.settings.googleSheetUrl;
+                    if (!url) {
+                        this.showAlert('Pautan Google Sheet tidak ditetapkan di Tetapan.', 'error');
+                        this.classRosters = {};
+                        this.render();
                         return;
                     }
                     try {
-                        const response = await fetch(this.googleSheetUrl);
+                        const response = await fetch(url);
                         if (!response.ok) throw new Error(`Ralat rangkaian: ${response.statusText}`);
                         const csvText = await response.text();
                         const rosters = {};
@@ -321,57 +467,17 @@
                         });
                         this.classRosters = rosters;
                         if (Object.keys(this.classRosters).length === 0) {
-                            this.showAlert('Gagal memuatkan senarai pelajar. Semak format/pautan Google Sheet.', 'error');
+                            this.showAlert('Gagal memuatkan senarai pelajar.', 'error');
                         } else {
                             this.showAlert('Senarai pelajar berjaya dimuatkan!', 'success');
                         }
                     } catch (error) {
                         console.error('Ralat memuatkan senarai nama:', error);
                         this.showAlert('Gagal memuatkan senarai dari Google Sheet.', 'error');
-                        this.classRosters = {
-                           'Contoh Kelas A': [{ name: 'Pelajar Contoh 1', status: 'Active' }, { name: 'Pelajar Contoh 2', status: 'Active' }],
-                           'Contoh Kelas B': [{ name: 'Pelajar Contoh 3', status: 'Active' }, { name: 'Pelajar Contoh 4', status: 'Inactive' }]
-                        };
+                        this.classRosters = {};
                     }
                 },
-
-                cacheDOM() {
-                    this.onlineStatus = document.getElementById('online-status');
-                    this.migrateDataBtn = document.getElementById('migrate-data-btn');
-                    this.tabs = { entry: document.getElementById('tab-entry'), dashboard: document.getElementById('tab-dashboard'), summary: document.getElementById('tab-summary') };
-                    this.content = { entry: document.getElementById('content-entry'), dashboard: document.getElementById('content-dashboard'), summary: document.getElementById('content-summary') };
-                    this.entryForm = { date: document.getElementById('entry-date'), time: document.getElementById('entry-time'), class: document.getElementById('entry-class'), classType: document.getElementById('entry-class-type'), studentList: document.getElementById('student-list'), submitBtn: document.getElementById('submit-attendance'), studentListHeader: document.getElementById('student-list-header'), sessionRemarkToggle: document.getElementById('session-remark-toggle'), sessionRemarkContainer: document.getElementById('session-remark-container'), sessionRemarkInput: document.getElementById('session-remark-input') };
-                    this.dashboardView = { classSelect: document.getElementById('dashboard-class'), classTypeSelect: document.getElementById('dashboard-class-type'), monthSelect: document.getElementById('dashboard-month'), body: document.getElementById('dashboard-body'), printBtn: document.getElementById('print-report-btn') };
-                    this.summaryView = { monthSelect: document.getElementById('summary-month'), body: document.getElementById('summary-body') };
-                    this.modal = { container: document.getElementById('remarks-modal'), studentName: document.getElementById('modal-student-name'), content: document.getElementById('modal-remarks-content'), closeBtn: document.getElementById('close-modal') };
-                    this.sessionsModal = { container: document.getElementById('sessions-modal'), title: document.getElementById('sessions-modal-title'), content: document.getElementById('sessions-modal-content'), closeBtn: document.getElementById('close-sessions-modal') };
-                    this.deleteConfirmModal = { container: document.getElementById('delete-confirm-modal'), message: document.getElementById('delete-confirm-message'), confirmBtn: document.getElementById('confirm-delete-btn'), cancelBtn: document.getElementById('cancel-delete-btn') };
-                    this.alert = { container: document.getElementById('custom-alert'), message: document.getElementById('alert-message') };
-                    this.printSection = { container: document.getElementById('print-section'), header: document.getElementById('print-header'), table: document.getElementById('print-table'), summary: document.getElementById('print-summary'), footer: document.getElementById('print-footer') };
-                },
                 
-                bindEvents() {
-                    this.migrateDataBtn.addEventListener('click', this.migrateData.bind(this));
-                    this.tabs.entry.addEventListener('click', () => this.switchTab('entry'));
-                    this.tabs.dashboard.addEventListener('click', () => this.switchTab('dashboard'));
-                    this.tabs.summary.addEventListener('click', () => this.switchTab('summary'));
-                    this.entryForm.submitBtn.addEventListener('click', this.submitAttendance.bind(this));
-                    this.entryForm.class.addEventListener('change', this.renderStudentEntryList.bind(this));
-                    this.entryForm.sessionRemarkToggle.addEventListener('change', this.toggleSessionRemark.bind(this));
-                    this.dashboardView.classSelect.addEventListener('change', this.renderDashboard.bind(this));
-                    this.dashboardView.classTypeSelect.addEventListener('change', this.renderDashboard.bind(this));
-                    this.dashboardView.monthSelect.addEventListener('change', this.renderDashboard.bind(this));
-                    this.dashboardView.printBtn.addEventListener('click', this.generatePrintableReport.bind(this));
-                    this.summaryView.monthSelect.addEventListener('change', this.renderSummary.bind(this));
-                    this.modal.closeBtn.addEventListener('click', this.closeModal.bind(this));
-                    this.modal.container.addEventListener('click', (e) => { if (e.target === this.modal.container) this.closeModal(); });
-                    this.sessionsModal.closeBtn.addEventListener('click', this.closeSessionsModal.bind(this));
-                    this.sessionsModal.container.addEventListener('click', (e) => { if (e.target === this.sessionsModal.container) this.closeSessionsModal(); });
-                    this.deleteConfirmModal.cancelBtn.addEventListener('click', this.closeDeleteConfirmModal.bind(this));
-                    this.deleteConfirmModal.confirmBtn.addEventListener('click', this.executeDeleteSession.bind(this));
-                },
-
-                // --- DATA MANAGEMENT (Supabase) ---
                 async loadData() {
                     if (!this.supabase) {
                         this.showAlert('Sistem berjalan dalam mod luar talian (offline).', 'error');
@@ -384,7 +490,6 @@
                         return;
                     }
                     
-                    // Reconstruct the nested object structure from the flat array
                     const reconstructedData = {};
                     data.forEach(record => {
                         const { class_name, class_type, date, time, record_type, details } = record;
@@ -403,8 +508,7 @@
                     this.attendanceData = reconstructedData;
                     this.render();
                 },
-
-                // --- UI & RENDER ---
+                
                 render() {
                     this.populateClassSelects();
                     this.populateClassTypeSelects();
@@ -413,6 +517,7 @@
                     this.renderDashboard();
                     this.renderSummary();
                 },
+
                 populateClassSelects() {
                     const classNames = Object.keys(this.classRosters);
                     const defaultOption = '<option>Tiada kelas dimuatkan</option>';
@@ -425,11 +530,13 @@
                     this.entryForm.class.innerHTML = classOptions;
                     this.dashboardView.classSelect.innerHTML = classOptions;
                 },
+                
                 populateClassTypeSelects() {
                     const classTypeOptions = this.classTypes.map(c => `<option value="${c}">${c}</option>`).join('');
                     this.entryForm.classType.innerHTML = classTypeOptions;
                     this.dashboardView.classTypeSelect.innerHTML = classTypeOptions;
                 },
+
                 populateMonthFilters() {
                     const allDates = new Set();
                     Object.values(this.attendanceData).forEach(classData => Object.values(classData).forEach(typeData => typeData.forEach(record => allDates.add(record.date.substring(0, 7)))));
@@ -443,6 +550,7 @@
                     this.dashboardView.monthSelect.innerHTML = finalOptions;
                     this.summaryView.monthSelect.innerHTML = finalOptions;
                 },
+
                 renderStudentEntryList() {
                     const selectedClass = this.entryForm.class.value;
                     const activeStudents = (this.classRosters[selectedClass] || []).filter(s => s.status === 'Active');
@@ -451,11 +559,11 @@
                         return;
                     }
                     this.entryForm.studentList.innerHTML = activeStudents.map((student, index) => `
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border-t pt-4">
-                            <div class="md:col-span-1 font-medium text-gray-700">${student.name}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border-t pt-4" style="border-color: var(--border-color);">
+                            <div class="md:col-span-1 font-medium">${student.name}</div>
                             <div class="md:col-span-2"><div class="flex flex-wrap items-center gap-4">
-                                <div class="flex items-center"><input id="present-${index}" name="status-${student.name.replace(/\s+/g, '-')}" type="radio" value="present" class="h-4 w-4 text-blue-600 border-gray-300" checked><label for="present-${index}" class="ml-2 block text-sm">Hadir</label></div>
-                                <div class="flex items-center"><input id="absent-${index}" name="status-${student.name.replace(/\s+/g, '-')}" type="radio" value="absent" class="h-4 w-4 text-blue-600 border-gray-300"><label for="absent-${index}" class="ml-2 block text-sm">Tidak Hadir</label></div>
+                                <div class="flex items-center"><input id="present-${index}" name="status-${student.name.replace(/\s+/g, '-')}" type="radio" value="present" class="h-4 w-4 border-gray-300" checked style="color: var(--accent-color);"><label for="present-${index}" class="ml-2 block text-sm">Hadir</label></div>
+                                <div class="flex items-center"><input id="absent-${index}" name="status-${student.name.replace(/\s+/g, '-')}" type="radio" value="absent" class="h-4 w-4 border-gray-300" style="color: var(--accent-color);"><label for="absent-${index}" class="ml-2 block text-sm">Tidak Hadir</label></div>
                                 <div class="flex-grow"><input type="text" placeholder="Sebab (jika tidak hadir)" data-student="${student.name}" class="remarks-input w-full px-2 py-1 border rounded-md text-sm" disabled></div>
                             </div></div>
                         </div>`).join('');
@@ -465,6 +573,7 @@
                         if (e.target.value !== 'absent') remarksInput.value = '';
                     }));
                 },
+
                 renderDashboard() {
                     const selectedClass = this.dashboardView.classSelect.value;
                     const selectedClassType = this.dashboardView.classTypeSelect.value;
@@ -500,24 +609,25 @@
                     });
                     this.dashboardView.body.innerHTML = summary.map(s => {
                         const percentageColor = s.percentage >= 80 ? 'bg-green-500' : s.percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500';
-                        const statusLabel = s.status === 'Inactive' ? `<span class="text-xs text-gray-500 ml-2">(Tidak Aktif)</span>` : '';
+                        const statusLabel = s.status === 'Inactive' ? `<span class="text-xs ml-2" style="color: var(--text-secondary);">(Tidak Aktif)</span>` : '';
                         return `
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.name}${statusLabel}</div></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium">${s.name}${statusLabel}</div></td>
                                 <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center">
-                                    <div class="w-full bg-gray-200 rounded-full h-2.5"><div class="${percentageColor} h-2.5 rounded-full" style="width: ${s.percentage}%"></div></div>
-                                    <span class="ml-3 text-sm font-medium text-gray-600">${s.percentage}%</span>
+                                    <div class="w-full rounded-full h-2.5" style="background-color: var(--bg-primary);"><div class="${percentageColor} h-2.5 rounded-full" style="width: ${s.percentage}%"></div></div>
+                                    <span class="ml-3 text-sm font-medium" style="color: var(--text-secondary);">${s.percentage}%</span>
                                 </div></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${s.absentCount > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${s.absentCount}</span></td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-center"><button ${s.absentCount === 0 ? 'disabled' : ''} data-student-name="${s.name}" class="view-remarks-btn text-blue-600 hover:text-blue-900 disabled:text-gray-400">Papar Sebab</button></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-center"><button ${s.absentCount === 0 ? 'disabled' : ''} data-student-name="${s.name}" class="view-remarks-btn disabled:opacity-50" style="color: var(--accent-color);">Papar Sebab</button></td>
                             </tr>`;
                     }).join('');
                     this.dashboardView.body.querySelectorAll('.view-remarks-btn').forEach(btn => btn.addEventListener('click', e => {
                         const studentName = e.target.getAttribute('data-student-name');
                         const studentSummary = summary.find(s => s.name === studentName);
-                        if (studentSummary) this.showRemarksModal(studentSummary);
+                        if (studentSummary) this.showModal('modal', studentSummary);
                     }));
                 },
+
                 renderSummary() {
                     const selectedMonth = this.summaryView.monthSelect.value;
                     const classNames = Object.keys(this.classRosters);
@@ -563,34 +673,36 @@
                         });
                         if (highest.name === '-') highest.percentage = 0;
                         if (lowest.name === '-' || totalSessions === 0) { lowest.name = '-'; lowest.percentage = 0; }
-                        const highestStatusLabel = highest.status === 'Inactive' ? ` <span class="text-xs text-gray-500">(Tidak Aktif)</span>` : '';
-                        const lowestStatusLabel = lowest.status === 'Inactive' ? ` <span class="text-xs text-gray-500">(Tidak Aktif)</span>` : '';
+                        const highestStatusLabel = highest.status === 'Inactive' ? ` <span class="text-xs" style="color: var(--text-secondary);">(T/A)</span>` : '';
+                        const lowestStatusLabel = lowest.status === 'Inactive' ? ` <span class="text-xs" style="color: var(--text-secondary);">(T/A)</span>` : '';
                         return `
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${className}</div></td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm"><button data-class-name="${className}" class="view-sessions-btn text-blue-600 hover:text-blue-900 underline disabled:text-gray-400" ${totalSessions === 0 ? 'disabled' : ''}>${totalSessions}</button></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium">${className}</div></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm"><button data-class-name="${className}" class="view-sessions-btn underline disabled:opacity-50" ${totalSessions === 0 ? 'disabled' : ''} style="color: var(--accent-color);">${totalSessions}</button></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold">${overallPercentage}%</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">${highest.name}${highestStatusLabel} <span class="text-green-600 font-semibold">(${highest.percentage}%)</span></td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">${lowest.name}${lowestStatusLabel} <span class="text-red-600 font-semibold">(${lowest.percentage}%)</span></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm" style="color: var(--text-secondary);">${highest.name}${highestStatusLabel} <span class="font-semibold text-green-600">(${highest.percentage}%)</span></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm" style="color: var(--text-secondary);">${lowest.name}${lowestStatusLabel} <span class="font-semibold text-red-600">(${lowest.percentage}%)</span></td>
                             </tr>`;
                     }).join('');
                     this.summaryView.body.innerHTML = summaryHtml || `<tr><td colspan="5" class="px-6 py-4 text-center">Tiada data kehadiran direkodkan lagi.</td></tr>`;
-                    this.summaryView.body.querySelectorAll('.view-sessions-btn').forEach(btn => btn.addEventListener('click', e => this.showSessionsModal(e.target.getAttribute('data-class-name'))));
+                    this.summaryView.body.querySelectorAll('.view-sessions-btn').forEach(btn => btn.addEventListener('click', e => this.showModal('sessionsModal', e.target.getAttribute('data-class-name'))));
                 },
-                updateOnlineStatus(isOnline, message) {
-                    const statusColor = isOnline ? 'bg-green-500' : 'bg-red-500';
-                    const statusDot = `<span class="h-3 w-3 rounded-full ${statusColor} inline-block mr-2"></span>`;
-                    this.onlineStatus.innerHTML = `<div class="flex items-center text-sm">${statusDot} ${message}</div>`;
-                },
-
+                
                 // --- CORE LOGIC ---
                 switchTab(tabName) {
-                    Object.values(this.content).forEach(c => c.classList.add('hidden'));
-                    Object.values(this.tabs).forEach(t => t.classList.remove('tab-active'));
-                    this.content[tabName].classList.remove('hidden');
-                    this.tabs[tabName].classList.add('tab-active');
+                    this.tabContents.forEach(c => c.classList.add('hidden'));
+                    this.tabButtons.forEach(t => {
+                        t.classList.remove('tab-active');
+                        t.style.color = 'var(--text-secondary)';
+                    });
+                    document.getElementById(`content-${tabName}`).classList.remove('hidden');
+                    const activeTab = document.querySelector(`button[data-tab="${tabName}"]`);
+                    activeTab.classList.add('tab-active');
+                    activeTab.style.color = 'var(--accent-color)';
+                    
                     if (tabName === 'dashboard') this.renderDashboard();
                     if (tabName === 'summary') this.renderSummary();
+                    if (tabName === 'settings') this.loadSettings();
                 },
                 
                 toggleSessionRemark() {
@@ -657,8 +769,8 @@
                     } else {
                         this.showAlert('Rekod berjaya dipadam.', 'success');
                     }
-                    this.closeDeleteConfirmModal();
-                    this.closeSessionsModal();
+                    this.closeModal('deleteConfirmModal');
+                    this.closeModal('sessionsModal');
                     await this.loadData();
                 },
 
@@ -699,10 +811,11 @@
 
                     if (recordsToMigrate.length === 0) {
                         this.showAlert('Tiada data untuk dipindahkan.', 'error');
+                        this.migrateDataBtn.disabled = false;
+                        this.migrateDataBtn.textContent = 'Pindah Data Lama ke Online';
                         return;
                     }
                     
-                    // Upsert to avoid duplicates if migration is run multiple times
                     const { error } = await this.supabase.from('attendance_records').upsert(recordsToMigrate, { onConflict: 'class_name,class_type,date' });
 
                     if (error) {
@@ -711,71 +824,57 @@
                          this.migrateDataBtn.textContent = 'Cuba Pindah Semula';
                     } else {
                          this.showAlert('Semua data lama berjaya dipindahkan ke pangkalan data online!', 'success');
-                         localStorage.removeItem('attendanceData'); // Clear old data after successful migration
+                         localStorage.removeItem('attendanceData');
                          this.migrateDataBtn.classList.add('hidden');
                          await this.loadData();
                     }
                 },
-                // --- MODALS, PRINTING, ALERTS ---
-                showRemarksModal(studentSummary) {
-                    this.modal.studentName.textContent = `Sebab Tidak Hadir untuk ${studentSummary.name}`;
-                    this.modal.content.innerHTML = studentSummary.remarks.length > 0 ? studentSummary.remarks.map(r => `
-                        <div class="border-l-4 border-blue-500 pl-3 py-1 my-1">
-                            <p class="font-semibold">${new Date(r.date + 'T00:00:00').toDateString()}</p>
-                            <p>${r.remark || 'Tiada sebab diberikan.'}</p>
-                        </div>`).join('') : '<p>Tiada sebab direkodkan.</p>';
-                    this.modal.container.classList.remove('hidden');
-                },
-
-                closeModal() {
-                    this.modal.container.classList.add('hidden');
-                },
-
-                showSessionsModal(className) {
-                    const selectedMonth = this.summaryView.monthSelect.value;
-                    this.sessionsModal.title.textContent = `Senarai Sesi untuk Kelas ${className}`;
-                    const sessions = [];
-                    this.classTypes.forEach(classType => {
-                        let records = this.attendanceData[className]?.[classType] || [];
-                        if (selectedMonth !== 'all') {
-                            records = records.filter(record => record.date.startsWith(selectedMonth));
-                        }
-                        records.forEach(record => {
-                            if (record.type === 'session_remark') {
-                                sessions.push({ ...record, classType, isRemark: true });
-                            } else {
-                                sessions.push({ ...record, classType, isRemark: false });
-                            }
+                
+                // --- MODALS ---
+                showModal(modalName, data) {
+                    if (modalName === 'modal') {
+                        this.modal.studentName.textContent = `Sebab Tidak Hadir untuk ${data.name}`;
+                        this.modal.content.innerHTML = data.remarks.length > 0 ? data.remarks.map(r => `
+                            <div class="border-l-4 pl-3 py-1 my-1" style="border-color: var(--accent-color);">
+                                <p class="font-semibold">${new Date(r.date + 'T00:00:00').toDateString()}</p>
+                                <p>${r.remark || 'Tiada sebab diberikan.'}</p>
+                            </div>`).join('') : '<p>Tiada sebab direkodkan.</p>';
+                    } else if (modalName === 'sessionsModal') {
+                        const className = data;
+                        const selectedMonth = this.summaryView.monthSelect.value;
+                        this.sessionsModal.title.textContent = `Senarai Sesi untuk Kelas ${className}`;
+                        const sessions = [];
+                        this.classTypes.forEach(classType => {
+                            let records = this.attendanceData[className]?.[classType] || [];
+                            if (selectedMonth !== 'all') records = records.filter(record => record.date.startsWith(selectedMonth));
+                            records.forEach(record => {
+                                if (record.type === 'session_remark') sessions.push({ ...record, classType, isRemark: true });
+                                else sessions.push({ ...record, classType, isRemark: false });
+                            });
                         });
-                    });
-                    sessions.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
-                    this.sessionsModal.content.innerHTML = sessions.length > 0 ? `<ul class="list-disc pl-5 space-y-2">${sessions.map(s => {
-                        const displayInfo = s.isRemark ? `<span class="font-semibold text-indigo-600">${s.remark}</span>` : `${s.time} (${s.classType})`;
-                        return `<li><div class="flex justify-between items-center">
-                                    <div><span class="font-semibold">${new Date(s.date + 'T00:00:00').toDateString()}</span> - ${displayInfo}</div>
-                                    <button data-class-name="${className}" data-date="${s.date}" data-type="${s.classType}" class="delete-session-btn text-red-500 hover:text-red-700 p-1 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>
-                                </div></li>`;
-                    }).join('')}</ul>` : '<p>Tiada sesi direkodkan untuk kelas ini.</p>';
-                    this.sessionsModal.content.querySelectorAll('.delete-session-btn').forEach(btn => btn.addEventListener('click', e => this.promptDeleteSession(e.currentTarget.dataset)));
-                    this.sessionsModal.container.classList.remove('hidden');
+                        sessions.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+                        this.sessionsModal.content.innerHTML = sessions.length > 0 ? `<ul class="list-disc pl-5 space-y-2">${sessions.map(s => {
+                            const displayInfo = s.isRemark ? `<span class="font-semibold" style="color: var(--accent-color);">${s.remark}</span>` : `${s.time} (${s.classType})`;
+                            return `<li><div class="flex justify-between items-center">
+                                        <div><span class="font-semibold">${new Date(s.date + 'T00:00:00').toDateString()}</span> - ${displayInfo}</div>
+                                        <button data-class-name="${className}" data-date="${s.date}" data-type="${s.classType}" class="delete-session-btn text-red-500 hover:text-red-700 p-1 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>
+                                    </div></li>`;
+                        }).join('')}</ul>` : '<p>Tiada sesi direkodkan untuk kelas ini.</p>';
+                        this.sessionsModal.content.querySelectorAll('.delete-session-btn').forEach(btn => btn.addEventListener('click', e => this.showModal('deleteConfirmModal', e.currentTarget.dataset)));
+                    } else if (modalName === 'deleteConfirmModal') {
+                        const { className, date, type } = data;
+                        this.deleteConfirmModal.message.textContent = `Adakah anda pasti mahu memadam rekod untuk kelas ${className} (${type}) pada ${date}? Tindakan ini tidak boleh diubah.`;
+                        this.deleteConfirmModal.confirmBtn.dataset.className = className;
+                        this.deleteConfirmModal.confirmBtn.dataset.date = date;
+                        this.deleteConfirmModal.confirmBtn.dataset.type = type;
+                    }
+                    this[modalName].container.classList.remove('hidden');
                 },
 
-                closeSessionsModal() {
-                    this.sessionsModal.container.classList.add('hidden');
+                closeModal(modalName) {
+                    this[modalName].container.classList.add('hidden');
                 },
-
-                promptDeleteSession({ className, date, type }) {
-                    this.deleteConfirmModal.message.textContent = `Adakah anda pasti mahu memadam rekod untuk kelas ${className} (${type}) pada ${date}? Tindakan ini tidak boleh diubah.`;
-                    this.deleteConfirmModal.confirmBtn.dataset.className = className;
-                    this.deleteConfirmModal.confirmBtn.dataset.date = date;
-                    this.deleteConfirmModal.confirmBtn.dataset.type = type;
-                    this.deleteConfirmModal.container.classList.remove('hidden');
-                },
-
-                closeDeleteConfirmModal() {
-                    this.deleteConfirmModal.container.classList.add('hidden');
-                },
-
+                
                 generatePrintableReport() {
                     const selectedClass = this.dashboardView.classSelect.value;
                     const selectedClassType = this.dashboardView.classTypeSelect.value;
@@ -784,46 +883,52 @@
                         this.showAlert('Sila pilih bulan yang spesifik untuk mencetak laporan.', 'error');
                         return;
                     }
+
                     const students = this.classRosters[selectedClass] || [];
                     const records = this.attendanceData[selectedClass]?.[selectedClassType] || [];
                     const monthRecords = records.filter(r => r.date.startsWith(selectedMonth));
                     const sessionDates = [...new Set(monthRecords.map(r => r.date))].sort();
+
                     if (sessionDates.length === 0) {
                         this.showAlert('Tiada rekod untuk dicetak bagi bulan yang dipilih.', 'error');
                         return;
                     }
+                    
                     const date = new Date(selectedMonth + '-02');
                     const monthName = date.toLocaleString('ms-MY', { month: 'long', year: 'numeric' });
-                    this.printSection.header.innerHTML = `
+
+                    const printHeader = `
                         <h2 style="font-size: 1.5rem; font-weight: bold;">Laporan Kehadiran Bulanan</h2>
+                        <p><strong>Sekolah:</strong> ${this.settings.schoolName || 'N/A'}</p>
+                        <p><strong>Guru:</strong> ${this.settings.teacherName || 'N/A'}</p>
                         <p><strong>Kelas:</strong> ${selectedClass} (${selectedClassType})</p>
-                        <p><strong>Bulan:</strong> ${monthName}</p>
-                    `;
-                    let tableHTML = '<thead><tr><th style="width: 300px;">Nama Pelajar</th>';
+                        <p><strong>Bulan:</strong> ${monthName}</p>`;
+                    
+                    let tableHTML = '<thead><tr><th style="width: 250px;">Nama Pelajar</th>';
                     sessionDates.forEach(dateStr => {
                         const day = new Date(dateStr + 'T00:00:00').getDate();
-                        tableHTML += `<th style="width: 20px; text-align: center;">${day}</th>`;
+                        tableHTML += `<th style="width: 25px; text-align: center;">${day}</th>`;
                     });
                     tableHTML += '<th style="text-align: center;">Hadir</th><th style="text-align: center;">Tidak Hadir</th><th style="text-align: center;">%</th></tr></thead>';
+                    
                     tableHTML += '<tbody>';
                     students.forEach(studentObj => {
                         let presentCount = 0;
                         let absentCount = 0;
                         tableHTML += `<tr><td>${studentObj.name} ${studentObj.status === 'Inactive' ? '(T/A)' : ''}</td>`;
+                        
                         sessionDates.forEach(dateStr => {
                             let cellContent = '';
                             const recordForDay = monthRecords.find(r => r.date === dateStr);
                             if (recordForDay) {
                                 if (recordForDay.type === 'session_remark') {
                                     cellContent = 'C';
-                                } else if (recordForDay.records[studentObj.name]) {
+                                } else if (recordForDay.records && recordForDay.records[studentObj.name]) {
                                     const status = recordForDay.records[studentObj.name].status;
                                     if (status === 'present') {
-                                        cellContent = '/';
-                                        presentCount++;
+                                        cellContent = 'H'; presentCount++;
                                     } else {
-                                        cellContent = 'O';
-                                        absentCount++;
+                                        cellContent = 'T'; absentCount++;
                                     }
                                 }
                             }
@@ -831,30 +936,89 @@
                         });
                         const totalClasses = presentCount + absentCount;
                         const percentage = totalClasses > 0 ? (presentCount / totalClasses * 100).toFixed(0) : 0;
+
                         tableHTML += `<td style="text-align: center;">${presentCount}</td>`;
                         tableHTML += `<td style="text-align: center;">${absentCount}</td>`;
                         tableHTML += `<td style="text-align: center;">${percentage}%</td>`;
                         tableHTML += '</tr>';
                     });
                     tableHTML += '</tbody>';
-                    this.printSection.table.innerHTML = tableHTML;
-                    this.printSection.summary.innerHTML = `
-                        <p style="font-size: 0.8rem;"><strong>Petunjuk:</strong> / = Hadir, O = Tidak Hadir, C = Cuti / Acara Khas, (T/A) = Tidak Aktif</p>
-                    `;
-                    this.printSection.footer.innerHTML = `
+
+                    const printSummary = `<p style="font-size: 0.8rem;"><strong>Petunjuk:</strong> H = Hadir, T = Tidak Hadir, C = Cuti / Acara Khas, (T/A) = Tidak Aktif</p>`;
+                    const printFooter = `
                         <div style="margin-top: 40px; display: flex; justify-content: space-between;">
-                            <div><p>_________________________</p><p>Tandatangan Pensyarah</p></div>
+                            <div><p>_________________________</p><p>Tandatangan Guru</p></div>
                             <div><p>Tarikh: ______________</p></div>
-                        </div>
-                    `;
+                        </div>`;
+                    
+                    this.printSection.innerHTML = `${printHeader}<table class="w-full border-collapse">${tableHTML}</table>${printSummary}${printFooter}`;
                     window.print();
                 },
-                
+
+                exportToCSV() {
+                    const selectedClass = this.dashboardView.classSelect.value;
+                    const selectedClassType = this.dashboardView.classTypeSelect.value;
+                    const selectedMonth = this.dashboardView.monthSelect.value;
+                    if (selectedMonth === 'all') {
+                        this.showAlert('Sila pilih bulan yang spesifik untuk eksport.', 'error');
+                        return;
+                    }
+
+                    const students = this.classRosters[selectedClass] || [];
+                    const records = this.attendanceData[selectedClass]?.[selectedClassType] || [];
+                    const monthRecords = records.filter(r => r.date.startsWith(selectedMonth));
+                    const sessionDates = [...new Set(monthRecords.map(r => r.date))].sort();
+
+                    if (sessionDates.length === 0) {
+                        this.showAlert('Tiada rekod untuk dieksport bagi bulan yang dipilih.', 'error');
+                        return;
+                    }
+                    
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    const headers = ['Nama Pelajar', ...sessionDates, 'Jumlah Hadir', 'Jumlah Tidak Hadir', 'Peratusan (%)'];
+                    csvContent += headers.join(',') + '\r\n';
+
+                    students.forEach(studentObj => {
+                        let row = [`"${studentObj.name}${studentObj.status === 'Inactive' ? ' (T/A)' : ''}"`];
+                        let presentCount = 0;
+                        let absentCount = 0;
+                        sessionDates.forEach(dateStr => {
+                            const recordForDay = monthRecords.find(r => r.date === dateStr);
+                            let status = '';
+                            if (recordForDay) {
+                                if (recordForDay.type === 'session_remark') {
+                                    status = 'Cuti';
+                                } else if (recordForDay.records && recordForDay.records[studentObj.name]) {
+                                    if(recordForDay.records[studentObj.name].status === 'present') {
+                                        status = 'Hadir'; presentCount++;
+                                    } else {
+                                        status = 'Tidak Hadir'; absentCount++;
+                                    }
+                                }
+                            }
+                            row.push(status);
+                        });
+                        const total = presentCount + absentCount;
+                        const percentage = total > 0 ? ((presentCount / total) * 100).toFixed(0) : 0;
+                        row.push(presentCount, absentCount, percentage);
+                        csvContent += row.join(',') + '\r\n';
+                    });
+
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", `laporan_${selectedClass}_${selectedMonth}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                },
+
                 showAlert(message, type = 'success') {
                     this.alert.message.textContent = message;
-                    this.alert.container.className = `fixed top-5 right-5 z-50 text-white py-2 px-4 rounded-lg shadow-md transition-transform ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} translate-x-0`;
+                    this.alert.container.className = `fixed top-5 right-5 z-50 text-white py-2 px-4 rounded-lg shadow-md transition-opacity duration-300 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
+                    this.alert.container.classList.remove('hidden', 'opacity-0');
                     setTimeout(() => {
-                        this.alert.container.classList.add('translate-x-full');
+                        this.alert.container.classList.add('opacity-0');
                         setTimeout(() => this.alert.container.classList.add('hidden'), 300);
                     }, 3000);
                 }
@@ -865,5 +1029,4 @@
     </script>
 </body>
 </html>
-
 
